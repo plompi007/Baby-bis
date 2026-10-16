@@ -1,0 +1,15 @@
+{
+  "name": "ביס ראשון – מעקב טעימות ואלרגנים",
+  "short_name": "ביס ראשון",
+  "description": "מעקב אחר טעימות של התינוק, סימון אלרגנים ותזכורות לשמירה על חשיפה",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff8f1",
+  "theme_color": "#ff9f80",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
