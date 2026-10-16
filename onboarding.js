@@ -73,8 +73,6 @@ const EXPOSURE_OPTS = [
   { id: 'regular', t: 'אוכל/ת קבוע' },
   { id: 'reaction', t: 'הייתה תגובה' },
 ];
-// מוצר מייצג לכל אלרגן, לרישום החשיפות מהשאלון
-const ALLERGEN_REP = { peanut: 'bamba', sesame: 'tahini', egg: 'hardegg', milk: 'yogurt', wheat: 'bread', treenut: 'almond', fish: 'whitefish', soy: 'tofu', shellfish: 'shrimp' };
 
 let wizard = null;
 
@@ -184,7 +182,8 @@ function stepAllergens() {
     <p class="muted">כך לא תצטרכו להזין הכל מההתחלה. אפשר לשנות בכל רגע.</p>
     ${age < 4 ? `<div class="card small">👶 ${esc(wizard.babyName)} עוד צעיר/ה למוצקים – אפשר פשוט לדלג.</div>` : ''}
     <div class="exp-list">
-      ${Object.entries(ALLERGENS).map(([k, a]) => `
+      ${activeAllergens().map((k) => [k, ALLERGENS[k]]).map(([k, a]) => `
+        ${nutHeader(activeAllergens(), k, '<h3 class="section-title" style="margin:8px 0 0">🌰 אגוזים <span class="small muted" style="font-weight:400">– כל אחד בנפרד</span></h3>')}
         <div class="exp-row card">
           <div class="exp-name"><span class="anim-float" style="display:inline-block">${a.emoji}</span> ${a.name}
             ${k === 'milk' ? '<small class="muted">(גם תמ״ל רגיל נחשב)</small>' : ''}${k === 'peanut' ? '<small class="muted">(כולל במבה)</small>' : ''}</div>
@@ -274,7 +273,7 @@ function seedExposures(exposures, foodIds) {
     id: uid(), foodId, ts: now - daysAgo * DAY, liked: undefined, amount: undefined, symptoms, notes: 'מהשאלון הראשוני', seed: true,
   });
   for (const [k, v] of Object.entries(exposures)) {
-    const f = ALLERGEN_REP[k];
+    const f = ALLERGENS[k].rep;
     if (v === 'tried') add(f, 1);
     if (v === 'regular') [1, 3, 5].forEach((d) => add(f, d));
     if (v === 'reaction') add(f, 1, ['past']);

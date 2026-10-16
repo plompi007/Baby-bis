@@ -5,7 +5,9 @@
 const DAY = 86400000;
 const EXPOSURE_GOAL = 10; // מספר טעימות "הוגן" לפי מחקרי חשיפה חוזרת (8–10+)
 
+const SCHEMA_VERSION = 2;
 const defaultState = () => ({
+  v: SCHEMA_VERSION,
   onboarded: false,           // האם השאלון הראשוני הושלם
   parent: null,               // { name }
   avatar: null,               // { img (dataURL) | emoji, frame, sticker }
@@ -15,7 +17,7 @@ const defaultState = () => ({
   cleared: {},                // allergenKey -> ts שבו ההורה סימן שהרגישות נשללה ע״י רופא/ה
   favNotes: [],
   favRecipes: [],
-  settings: { disabled: ['shellfish'], targets: {}, notify: false, lastNotified: '' },
+  settings: { disabled: ['shellfish', 'macadamia', 'brazil', 'pinenut'], targets: {}, notify: false, lastNotified: '' },
 });
 
 let currentUser = null;
@@ -27,9 +29,25 @@ function load(userId) {
   if (!userId) return state;
   try {
     const raw = localStorage.getItem(Auth.dataKey(userId));
-    if (raw) state = Object.assign(defaultState(), JSON.parse(raw));
+    if (raw) state = migrate(JSON.parse(raw));
   } catch (e) { /* אחסון חסום – נעבוד בזיכרון */ }
   return state;
+}
+
+// עדכון נתונים שנשמרו בגרסאות קודמות
+function migrate(data) {
+  const st = Object.assign(defaultState(), data, { v: data.v || 1 });
+  st.settings = Object.assign(defaultState().settings, data.settings);
+  if (st.v < 2) {
+    // v2: "אגוזים" פוצל לאלרגן נפרד לכל אגוז
+    const nuts = Object.keys(ALLERGENS).filter((k) => ALLERGENS[k].group === 'nuts');
+    const s = st.settings;
+    s.disabled = [...new Set(s.disabled.includes('treenut') ? s.disabled.concat(nuts) : s.disabled.concat(['macadamia', 'brazil', 'pinenut']))].filter((k) => k !== 'treenut');
+    if (s.targets.treenut) { nuts.forEach((k) => { s.targets[k] = s.targets.treenut; }); delete s.targets.treenut; }
+    if (st.cleared.treenut) { nuts.forEach((k) => { st.cleared[k] = st.cleared.treenut; }); delete st.cleared.treenut; }
+    st.v = 2;
+  }
+  return st;
 }
 function save() {
   if (!currentUser) return;
@@ -47,7 +65,10 @@ const daysBetween = (a, b) => Math.floor((startOfDay(b) - startOfDay(a)) / DAY);
 
 const allFoods = () => FOODS.concat(state.customFoods);
 const foodById = (id) => allFoods().find((f) => f.id === id);
-const activeAllergens = () => Object.keys(ALLERGENS).filter((k) => !state.settings.disabled.includes(k));
+const activeAllergens = () => Object.keys(ALLERGENS).filter((k) => !ALLERGENS[k].legacy && !state.settings.disabled.includes(k));
+const visibleAllergens = () => Object.entries(ALLERGENS).filter(([, a]) => !a.legacy);
+// כותרת "אגוזים" לפני האגוז הראשון ברשימה
+const nutHeader = (keys, k, html) => (ALLERGENS[k].group === 'nuts' && keys.find((x) => ALLERGENS[x].group === 'nuts') === k ? html : '');
 const targetFor = (k) => state.settings.targets[k] ?? ALLERGENS[k].weeklyTarget;
 
 const REACTIONS = [
@@ -330,7 +351,7 @@ function allergensHTML() {
     ⭐ <b>למה זה חשוב?</b> חשיפה מוקדמת וקבועה לאלרגנים מפחיתה משמעותית את הסיכון לאלרגיה. אחרי שאלרגן הוכנס – צריך לשמור עליו בתפריט באופן קבוע (בבוטנים: ~3 פעמים בשבוע).
     <a href="#" data-goto-guide>עוד במדריך ←</a>
   </div>
-  ${infos.map(allergenCardHTML).join('')}
+  ${infos.map((i) => nutHeader(keys, i.key, `<h3 class="section-title">🌰 אגוזים <span class="small muted" style="font-weight:400">– כל אגוז בנפרד</span></h3>`) + allergenCardHTML(i)).join('')}
   <button class="btn ghost block" data-action="calendar">📅 הוספת תזכורות קבועות ליומן</button>
   <p class="small muted" style="text-align:center">אפשר לשנות יעדים ולכבות אלרגנים בהגדרות ⚙️</p>`;
 }
@@ -443,7 +464,7 @@ function guideHTML() {
     </details>`).join('')}
   <details class="guide">
     <summary><span style="font-size:24px">⭐</span>איך להגיש כל אלרגן</summary>
-    <ul>${Object.values(ALLERGENS).map((a) => `<li><b>${a.emoji} ${a.name}:</b> ${esc(a.how)} ${a.note ? `<br><span class="muted">${esc(a.note)}</span>` : ''}</li>`).join('')}</ul>
+    <ul>${visibleAllergens().map(([, a]) => a).map((a) => `<li><b>${a.emoji} ${a.name}:</b> ${esc(a.how)} ${a.note ? `<br><span class="muted">${esc(a.note)}</span>` : ''}</li>`).join('')}</ul>
   </details>
   <details class="guide">
     <summary><span style="font-size:24px">🔗</span>מקורות</summary>
@@ -853,7 +874,7 @@ function openAddFood() {
       <label>אנימציה</label>
       <div class="choice-row" data-group="anim">${anims.map((a, n) => `<button type="button" class="choice ${n ? '' : 'on'}" data-val="${a}" style="flex:0 0 52px"><span class="ce anim-${a}">🍽️</span></button>`).join('')}</div>
       <label for="afAllergen">מכיל אלרגן?</label>
-      <select id="afAllergen"><option value="">לא</option>${Object.entries(ALLERGENS).map(([k, a]) => `<option value="${k}">${a.emoji} ${a.name}</option>`).join('')}</select>
+      <select id="afAllergen"><option value="">לא</option>${visibleAllergens().map(([k, a]) => `<option value="${k}">${a.emoji} ${a.name}</option>`).join('')}</select>
       <label for="afTip">טיפ הגשה (לא חובה)</label>
       <input type="text" id="afTip" maxlength="120">
       <div style="height:14px"></div>
@@ -901,7 +922,8 @@ function openSettings() {
       <input type="date" id="stBirth" value="${esc(state.baby?.birth)}">
       <h3 class="section-title">⭐ אלרגנים ויעדים שבועיים</h3>
       <div class="card" style="padding:6px 14px">
-        ${Object.entries(ALLERGENS).map(([k, a]) => `
+        ${visibleAllergens().map(([k, a], _, all) => `
+          ${nutHeader(all.map(([x]) => x), k, '<div class="switch-head">🌰 אגוזים</div>')}
           <div class="switch">
             <label style="margin:0;display:flex;gap:8px;align-items:center"><input type="checkbox" data-en="${k}" ${s.disabled.includes(k) ? '' : 'checked'}> ${a.emoji} ${a.name}</label>
             <span><input type="number" min="1" max="7" data-target="${k}" value="${targetFor(k)}" style="width:64px;padding:6px"> /שבוע</span>
@@ -976,7 +998,7 @@ function importData(file) {
       const data = JSON.parse(r.result);
       if (!Array.isArray(data.logs)) throw new Error('bad');
       if (!confirm('הייבוא יחליף את הנתונים הנוכחיים. להמשיך?')) return;
-      state = Object.assign(defaultState(), data, { onboarded: true });
+      state = Object.assign(migrate(data), { onboarded: true });
       save(); closeModal(); go('home'); toast('יובא בהצלחה ✓');
     } catch { toast('קובץ לא תקין'); }
   };

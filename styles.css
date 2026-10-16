@@ -451,3 +451,4 @@ body.gate { padding-bottom: 0; }
 .sticker-pick { margin-top: 10px; }
 .frame-pick button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 2px var(--line); }
 .frame-pick button.on { box-shadow: 0 0 0 3px var(--ink); transform: scale(1.1); }
+.switch-head { font-weight: 700; padding: 12px 0 4px; border-bottom: 1px solid var(--line); }
