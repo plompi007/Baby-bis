@@ -143,7 +143,7 @@ h1, h2, h3 { margin: 0; }
 /* אלרגנים */
 .allergen-card { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
 .allergen-card .a-emoji { font-size: 40px; width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; position: relative; }
-.allergen-card .a-emoji svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.allergen-card .a-emoji svg.ring { position: absolute; inset: 0; transform: rotate(-90deg); }
 .status-pill { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; margin-top: 4px; }
 .st-notStarted { background: var(--line); color: var(--muted); }
 .st-introducing { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
@@ -508,3 +508,7 @@ body.gate { padding-bottom: 0; }
 .frame-pick button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 2px var(--line); }
 .frame-pick button.on { box-shadow: 0 0 0 3px var(--ink); transform: scale(1.1); }
 .switch-head { font-weight: 700; padding: 12px 0 4px; border-bottom: 1px solid var(--line); }
+
+/* איורי מוצרים (SVG) – מתנהגים כמו אימוג׳י */
+.fi { display: inline-block; width: 1.25em; height: 1.25em; margin: -0.125em; vertical-align: -0.2em; overflow: visible; }
+.celebrate .p .fi { width: 1em; height: 1em; margin: 0; }

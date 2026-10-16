@@ -298,7 +298,7 @@ function noteOfDay() {
 function reminderHTML(r) {
   return `
   <div class="reminder ${r.kind}">
-    <span class="r-emoji anim-${r.kind === 'overdue' ? 'shake' : 'pulse'}">${r.info.a.emoji}</span>
+    <span class="r-emoji anim-${r.kind === 'overdue' ? 'shake' : 'pulse'}">${allergenIcon(r.info.key)}</span>
     <div class="r-text"><b>${esc(r.title)}</b><small>${esc(r.text)}</small>${reminderIdea(r)}</div>
     ${r.kind === 'suspected' ? `<button class="btn small ghost" data-allergen="${r.info.key}">פרטים</button>` : `<button class="btn small" data-quick-allergen="${r.info.key}">נתנו ✓</button>`}
   </div>`;
@@ -336,7 +336,7 @@ function foodCardHTML(f) {
   <button class="food ${n ? 'tried' : 'untried'} ${f.allergen ? 'is-allergen' : ''}" data-food="${f.id}">
     ${f.allergen ? '<span class="badge-allergen">⭐ אלרגן</span>' : ''}
     ${f.choke ? '<span class="badge-choke" title="שימו לב לצורת ההגשה">⚠️</span>' : ''}
-    <span class="f-emoji anim-${f.anim || 'bounce'}" style="${animStyle(f)};animation-delay:-${delay}ms">${f.emoji}</span>
+    <span class="f-emoji anim-${f.anim || 'bounce'}" style="${animStyle(f)};animation-delay:-${delay}ms">${foodIcon(f)}</span>
     <span class="f-name">${esc(f.name)}</span>
     <span class="f-count">${n ? `${n} טעימות` : 'עוד לא'}</span>
     ${n ? `<span class="ring"><i style="width:${pct}%"></i></span>` : ''}
@@ -367,9 +367,9 @@ function allergenCardHTML(i) {
   return `
   <div class="card allergen-card" data-allergen="${i.key}" role="button" tabindex="0">
     <div class="a-emoji">
-      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--line)" stroke-width="5"/>
+      <svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--line)" stroke-width="5"/>
       <circle cx="32" cy="32" r="${r}" fill="none" stroke="${ringColor}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct)}" style="transition:stroke-dashoffset .8s"/></svg>
-      <span class="${i.level === 'overdue' ? 'anim-shake' : i.status === 'maintaining' ? 'anim-float' : ''}" style="font-size:30px">${i.a.emoji}</span>
+      <span class="${i.level === 'overdue' ? 'anim-shake' : i.status === 'maintaining' ? 'anim-float' : ''}" style="font-size:30px">${allergenIcon(i.key)}</span>
     </div>
     <div>
       <b>${i.a.name}</b><br>
@@ -407,7 +407,7 @@ function logHTML(l, withDelete) {
   const time = new Date(l.ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
   return `
   <div class="log ${sym.length ? 'has-symptoms' : ''}">
-    <span class="l-emoji">${f.emoji}</span>
+    <span class="l-emoji">${foodIcon(f)}</span>
     <div class="l-main">
       <b>${esc(f.name)} ${f.allergen ? '⭐' : ''}</b>
       <small>${l.seed ? '📋 מהשאלון הראשוני' : withDelete ? time : relDay(l.ts)}${a ? ' · ' + a.t : ''}${sym.length ? ' · ⚠️ ' + esc(sym.join(', ')) : ''}${l.notes && !l.seed ? ' · ' + esc(l.notes) : ''}</small>
@@ -464,7 +464,7 @@ function guideHTML() {
     </details>`).join('')}
   <details class="guide">
     <summary><span style="font-size:24px">⭐</span>איך להגיש כל אלרגן</summary>
-    <ul>${visibleAllergens().map(([, a]) => a).map((a) => `<li><b>${a.emoji} ${a.name}:</b> ${esc(a.how)} ${a.note ? `<br><span class="muted">${esc(a.note)}</span>` : ''}</li>`).join('')}</ul>
+    <ul>${visibleAllergens().map(([k, a]) => `<li><b>${allergenIcon(k)} ${a.name}:</b> ${esc(a.how)} ${a.note ? `<br><span class="muted">${esc(a.note)}</span>` : ''}</li>`).join('')}</ul>
   </details>
   <details class="guide">
     <summary><span style="font-size:24px">🔗</span>מקורות</summary>
@@ -613,7 +613,7 @@ function recipeCardHTML(r) {
       <b>${esc(r.name)} ${fav ? '❤️' : ''}</b>
       <small>מגיל ${r.age} ח׳ · ${TEXTURE[r.texture]} · ${r.time} דק׳</small>
       <span class="r-tags">
-        ${als.map((k) => `<span class="mini-allergen ${blockers.includes(k) ? 'blocked' : ''}" title="${ALLERGENS[k].name}">${ALLERGENS[k].emoji}</span>`).join('')}
+        ${als.map((k) => `<span class="mini-allergen ${blockers.includes(k) ? 'blocked' : ''}" title="${ALLERGENS[k].name}">${allergenIcon(k)}</span>`).join('')}
         ${blockers.length ? '<span class="mini-warn">יש אלרגן שעוד לא הוכר</span>' : newOnes ? `<span class="mini-new">${newOnes} טעמים חדשים</span>` : '<span class="mini-ok">הכל מוכר ✓</span>'}
       </span>
     </span>
@@ -635,11 +635,11 @@ function openRecipe(id) {
     </div>
     ${!ageOk ? `<div class="warn-banner small">👶 המתכון מתאים מגיל ${r.age} חודשים – כדאי לחכות קצת.</div>` : ''}
     ${blockers.length ? `<div class="warn-banner small">⚠️ המתכון מכיל ${blockers.map((k) => ALLERGENS[k].name).join(', ')} – ${blockers.some((k) => allergenInfo(k).status === 'suspected') ? 'נרשמה תגובה לאלרגן זה, יש להתייעץ עם רופא/ה.' : 'שעוד לא הוכר. מומלץ להכיר אלרגן חדש קודם לבד, בכמות קטנה, ורק אחר כך במתכון משולב.'}</div>`
-      : als.length ? `<div class="allergen-banner">⭐ שומר על: ${als.map((k) => ALLERGENS[k].emoji + ' ' + ALLERGENS[k].name).join(' · ')}</div>` : ''}
+      : als.length ? `<div class="allergen-banner">⭐ שומר על: ${als.map((k) => allergenIcon(k) + ' ' + ALLERGENS[k].name).join(' · ')}</div>` : ''}
     <h3 class="section-title">🧺 מרכיבים</h3>
     <div class="card ing-list">
       ${r.ingredients.map((fid) => { const f = foodById(fid); const n = logsFor(fid).length; return `
-        <div class="ing"><span class="ing-e anim-${f.anim}" style="${animStyle(f)}">${f.emoji}</span><span>${esc(f.name)} ${f.allergen ? '⭐' : ''}</span>
+        <div class="ing"><span class="ing-e anim-${f.anim}" style="${animStyle(f)}">${foodIcon(f)}</span><span>${esc(f.name)} ${f.allergen ? '⭐' : ''}</span>
         <small class="${n ? 'ok' : 'new'}">${n ? `טעם ${n}×` : 'חדש!'}</small></div>`; }).join('')}
       ${r.extras.map((x) => `<div class="ing"><span class="ing-e">▫️</span><span>${esc(x)}</span></div>`).join('')}
     </div>
@@ -668,7 +668,7 @@ function openRecipeLog(r) {
     </div>
     <form class="form" id="rlForm">
       <label>מה ${esc(babyName())} אכל/ה?</label>
-      <div class="symptoms ing-pick">${r.ingredients.map((fid) => { const f = foodById(fid); return `<label><input type="checkbox" value="${fid}" ${blockers.includes(f.allergen) ? '' : 'checked'}>${f.emoji} ${esc(f.name)}</label>`; }).join('')}</div>
+      <div class="symptoms ing-pick">${r.ingredients.map((fid) => { const f = foodById(fid); return `<label><input type="checkbox" value="${fid}" ${blockers.includes(f.allergen) ? '' : 'checked'}>${foodIcon(f)} ${esc(f.name)}</label>`; }).join('')}</div>
       ${blockers.length ? `<div class="warn-banner small">⚠️ אלרגן שעוד לא הוכר לא סומן. סמנו אותו רק אם הוא אכן נאכל.</div>` : ''}
       <label>מתי?</label>
       <input type="datetime-local" id="rlTime" value="${now.toISOString().slice(0, 16)}" required>
@@ -738,7 +738,7 @@ function openFood(id) {
 
   openModal(`
     <div class="detail-hero" style="--stage:${cat?.color || '#ffd9c9'}">
-      <div class="stage">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="${animStyle(f)}">${f.emoji}</span></div>
+      <div class="stage">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="${animStyle(f)}">${foodIcon(f)}</span></div>
       <h2>${esc(f.name)}</h2>
       <div class="muted small">${cat ? cat.emoji + ' ' + cat.name : ''}</div>
     </div>
@@ -783,7 +783,7 @@ function openLog(foodId) {
 
   openModal(`
     <div class="detail-hero" style="padding:0">
-      <div class="stage mini" style="--stage:${CATEGORIES.find((c) => c.id === f.cat)?.color || '#ffd9c9'}">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="font-size:64px;${animStyle(f)}">${f.emoji}</span></div>
+      <div class="stage mini" style="--stage:${CATEGORIES.find((c) => c.id === f.cat)?.color || '#ffd9c9'}">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="font-size:64px;${animStyle(f)}">${foodIcon(f)}</span></div>
       <h2 style="font-size:22px">טעימה: ${esc(f.name)}</h2>
     </div>
     ${warn}
@@ -829,7 +829,7 @@ function openLog(foodId) {
       closeModal();
       const count = logsFor(foodId).length;
       if (log.symptoms.length) toast('נשמר. עקבו אחרי התסמינים והתייעצו עם רופא/ה 🩺');
-      else celebrate(f.emoji, count === 1 ? `טעימה ראשונה של ${f.name}! 🎉` : count === EXPOSURE_GOAL ? `${EXPOSURE_GOAL} טעימות! אלופים 🏆` : `טעימה מס׳ ${count} 👏`);
+      else celebrate(foodIcon(f), count === 1 ? `טעימה ראשונה של ${f.name}! 🎉` : count === EXPOSURE_GOAL ? `${EXPOSURE_GOAL} טעימות! אלופים 🏆` : `טעימה מס׳ ${count} 👏`);
       render();
     });
   });
@@ -840,7 +840,7 @@ function openAllergen(key) {
   const foods = allFoods().filter((f) => f.allergen === key);
   openModal(`
     <div class="detail-hero">
-      <div class="stage" style="--stage:#ffe0a6"><span class="big anim-jelly">${i.a.emoji}</span></div>
+      <div class="stage" style="--stage:#ffe0a6"><span class="big anim-jelly">${allergenIcon(key)}</span></div>
       <h2>${i.a.name}</h2>
       <span class="status-pill st-${i.status}">${STATUS_TEXT[i.status]}</span>
     </div>
@@ -931,7 +931,7 @@ function openSettings() {
         ${visibleAllergens().map(([k, a], _, all) => `
           ${nutHeader(all.map(([x]) => x), k, '<div class="switch-head">🌰 אגוזים</div>')}
           <div class="switch">
-            <label style="margin:0;display:flex;gap:8px;align-items:center"><input type="checkbox" data-en="${k}" ${s.disabled.includes(k) ? '' : 'checked'}> ${a.emoji} ${a.name}</label>
+            <label style="margin:0;display:flex;gap:8px;align-items:center"><input type="checkbox" data-en="${k}" ${s.disabled.includes(k) ? '' : 'checked'}> ${allergenIcon(k)} ${a.name}</label>
             <span><input type="number" min="1" max="7" data-target="${k}" value="${targetFor(k)}" style="width:64px;padding:6px"> /שבוע</span>
           </div>`).join('')}
       </div>
@@ -1074,7 +1074,7 @@ function celebrate(emoji, msg) {
   for (let n = 0; n < 26; n++) {
     const p = document.createElement('span');
     p.className = 'p';
-    p.textContent = extra[n % extra.length];
+    p.innerHTML = extra[n % extra.length];
     const ang = (n / 26) * Math.PI * 2;
     const dist = 120 + Math.random() * 160;
     p.style.left = '50%'; p.style.top = '40%';

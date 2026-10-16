@@ -185,7 +185,7 @@ function stepAllergens() {
       ${activeAllergens().map((k) => [k, ALLERGENS[k]]).map(([k, a]) => `
         ${nutHeader(activeAllergens(), k, '<h3 class="section-title" style="margin:8px 0 0">🌰 אגוזים <span class="small muted" style="font-weight:400">– כל אחד בנפרד</span></h3>')}
         <div class="exp-row card">
-          <div class="exp-name"><span class="anim-float" style="display:inline-block">${a.emoji}</span> ${a.name}
+          <div class="exp-name"><span class="anim-float" style="display:inline-block">${allergenIcon(k)}</span> ${a.name}
             ${k === 'milk' ? '<small class="muted">(גם תמ״ל רגיל נחשב)</small>' : ''}${k === 'peanut' ? '<small class="muted">(כולל במבה)</small>' : ''}</div>
           <div class="exp-opts" data-al="${k}">
             ${EXPOSURE_OPTS.map((o) => `<button type="button" class="exp-opt ${(wizard.exposures[k] || 'none') === o.id ? 'on' : ''} o-${o.id}" data-v="${o.id}">${o.t}</button>`).join('')}
@@ -216,7 +216,7 @@ function stepFoods() {
       const foods = FOODS.filter((f) => f.cat === c.id && !f.allergen);
       if (!foods.length) return '';
       return `<div class="wz-cat"><div class="wz-cat-head"><b>${c.emoji} ${c.name}</b><button type="button" class="link-btn" data-all="${c.id}">סמנו הכל</button></div>
-        <div class="pick-grid">${foods.map((f) => `<button type="button" class="pick ${wizard.foods.has(f.id) ? 'on' : ''}" data-f="${f.id}"><span class="anim-${f.anim}">${f.emoji}</span>${esc(f.name)}</button>`).join('')}</div></div>`;
+        <div class="pick-grid">${foods.map((f) => `<button type="button" class="pick ${wizard.foods.has(f.id) ? 'on' : ''}" data-f="${f.id}"><span class="anim-${f.anim}">${foodIcon(f)}</span>${esc(f.name)}</button>`).join('')}</div></div>`;
     }).join('')}
     <div class="wz-sticky"><button class="btn block" id="wzNext">סיימתי ←</button></div>`;
 }
