@@ -5,20 +5,50 @@
 const DAY = 86400000;
 const EXPOSURE_GOAL = 10; // מספר טעימות "הוגן" לפי מחקרי חשיפה חוזרת (8–10+)
 
-const SCHEMA_VERSION = 2;
-const defaultState = () => ({
+const SCHEMA_VERSION = 3;
+const defaultState = () => withKids({
   v: SCHEMA_VERSION,
   onboarded: false,           // האם השאלון הראשוני הושלם
-  parent: null,               // { name }
-  avatar: null,               // { img (dataURL) | emoji, frame, sticker }
-  baby: null,                 // { name, birth }
-  logs: [],                   // { id, foodId, ts, liked, amount, symptoms:[], notes }
+  parent: null,               // { name } – ההורה שמשתמש במכשיר
+  kids: [],                   // [{ id, baby: { name, birth, gender }, avatar, cleared }]
+  logs: [],                   // { id, kid, foodId, ts, liked, amount, texture, symptoms:[], notes, photo }
   customFoods: [],
-  cleared: {},                // allergenKey -> ts שבו ההורה סימן שהרגישות נשללה ע״י רופא/ה
   favNotes: [],
   favRecipes: [],
   settings: { disabled: ['shellfish', 'macadamia', 'brazil', 'pinenut'], targets: {}, notify: false, lastNotified: '' },
 });
+
+/* ---------- כמה ילדים ----------
+   state.baby / state.avatar / state.cleared מצביעים תמיד על הילד הפעיל (נבחר בכל מכשיר בנפרד),
+   כך ששאר הקוד עובד מול "הילד הנוכחי". הטעימות של כולם נשמרות ב-state.logs עם שדה kid. */
+const ACTIVE_KID_KEY = 'bis-rishon-active-kid';
+function activeKidId(st = state) {
+  let id = null;
+  try { id = localStorage.getItem(ACTIVE_KID_KEY); } catch { /* ללא אחסון */ }
+  return st.kids.some((k) => k.id === id) ? id : st.kids[0]?.id;
+}
+const activeKid = (st = state) => st.kids.find((k) => k.id === activeKidId(st));
+function setActiveKid(id) { try { localStorage.setItem(ACTIVE_KID_KEY, id); } catch { /* ללא אחסון */ } }
+function newKid(st) {
+  const k = { id: 'k_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), baby: null, avatar: null, cleared: {} };
+  st.kids.push(k);
+  return k;
+}
+function withKids(st) {
+  for (const f of ['baby', 'avatar', 'cleared']) {
+    Object.defineProperty(st, f, {
+      enumerable: false, configurable: true,
+      get() { const k = activeKid(st); return k ? k[f] : (f === 'cleared' ? {} : null); },
+      set(v) { (activeKid(st) || newKid(st))[f] = v; },
+    });
+  }
+  return st;
+}
+// הטעימות של הילד הפעיל בלבד
+function kidLogs() {
+  const id = activeKidId(), first = state.kids[0]?.id;
+  return state.logs.filter((l) => (l.kid || first) === id);
+}
 
 let currentUser = null;
 let state = defaultState();
@@ -44,8 +74,21 @@ function migrate(data) {
     const s = st.settings;
     s.disabled = [...new Set(s.disabled.includes('treenut') ? s.disabled.concat(nuts) : s.disabled.concat(['macadamia', 'brazil', 'pinenut']))].filter((k) => k !== 'treenut');
     if (s.targets.treenut) { nuts.forEach((k) => { s.targets[k] = s.targets.treenut; }); delete s.targets.treenut; }
-    if (st.cleared.treenut) { nuts.forEach((k) => { st.cleared[k] = st.cleared.treenut; }); delete st.cleared.treenut; }
+    const cl = data.cleared || st.cleared;
+    if (cl?.treenut) { nuts.forEach((k) => { cl[k] = cl.treenut; }); delete cl.treenut; }
     st.v = 2;
+  }
+  if (st.v < 3) {
+    // v3: כמה ילדים – הנתונים הקיימים הופכים לילד הראשון, וכל טעימה משויכת אליו
+    if (!st.kids.length && (data.baby || data.avatar)) newKid(st);
+    const k = st.kids[0];
+    if (k) {
+      if (data.baby && !k.baby) k.baby = data.baby;
+      if (data.avatar && !k.avatar) k.avatar = data.avatar;
+      if (data.cleared && !Object.keys(k.cleared || {}).length) k.cleared = data.cleared;
+      st.logs.forEach((l) => { if (!l.kid) l.kid = k.id; });
+    }
+    st.v = 3;
   }
   return st;
 }
@@ -133,10 +176,10 @@ function relDay(ts) {
 function babyName() { return state.baby?.name || G('הקטנ·ה'); }
 
 /* ===================== חישובים ===================== */
-function logsFor(foodId) { return state.logs.filter((l) => l.foodId === foodId); }
+function logsFor(foodId) { return kidLogs().filter((l) => l.foodId === foodId); }
 
 function allergenLogs(key) {
-  return state.logs.filter((l) => foodById(l.foodId)?.allergen === key).sort((a, b) => b.ts - a.ts);
+  return kidLogs().filter((l) => foodById(l.foodId)?.allergen === key).sort((a, b) => b.ts - a.ts);
 }
 
 // סטטוס אלרגן: notStarted / introducing / maintaining / suspected
@@ -235,7 +278,7 @@ const subHead = (title) => `<div class="subhead"><button class="back-btn" data-a
 
 function render() {
   const v = $('#view');
-  const gated = !currentUser || !state.onboarded || (Cloud.active && !state.parent?.name);
+  const gated = !currentUser || !state.onboarded || (Cloud.active && !state.parent?.name) || !!(typeof wizard !== 'undefined' && wizard?.addKid);
   document.body.classList.toggle('gate', gated);
   $('#babyLine').textContent = state.baby && !gated && tab !== 'home' ? `${state.baby.name} · ${ageText(state.baby.birth)}` : 'מעקב טעימות ואלרגנים';
   $('#settingsBtn').innerHTML = !gated && state.avatar ? avatarHTML(40) : '⚙️';
@@ -265,14 +308,14 @@ function updateBadge() {
 
 /* ===================== מסכים ===================== */
 function homeHTML() {
-  const triedIds = new Set(state.logs.map((l) => l.foodId));
+  const triedIds = new Set(kidLogs().map((l) => l.foodId));
   const triedCount = [...triedIds].filter((id) => foodById(id)).length;
   const allergenDone = activeAllergens().filter((k) => ['maintaining', 'introducing'].includes(allergenInfo(k).status)).length;
   const rems = reminders();
   const alerts = rems.filter((r) => r.kind === 'suspected');
   const todo = rems.filter((r) => r.kind !== 'suspected');
   const age = ageMonths();
-  const recent = state.logs.filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).slice(0, 4);
+  const recent = kidLogs().filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).slice(0, 4);
 
   let ageNote = '';
   if (age !== null && age < 4) ageNote = `<div class="card soft small">👶 ${G(`${esc(babyName())} עוד צעיר·ה למוצקים.`)} ההמלצה היא להתחיל סביב גיל 6 חודשים (ולא לפני 4), כשמופיעים סימני מוכנות. בינתיים אפשר לקרוא את הטיפים 💡</div>`;
@@ -283,6 +326,7 @@ function homeHTML() {
       <div>
         <p class="hero-hello">${greetingWord()}, ${esc(state.parent?.name || '')} ${greetingIcon()}</p>
         <h2>${esc(babyName())} <span>· ${ageText(state.baby?.birth)}</span></h2>
+        <button class="kid-switch" data-action="kids">${state.kids.length > 1 ? `⇄ ${state.kids.length} ילדים · החלפה` : '＋ הוספת ילד/ה'}</button>
       </div>
       ${state.avatar ? `<span class="hero-avatar">${avatarHTML(64)}</span>` : ''}
     </div>
@@ -290,7 +334,7 @@ function homeHTML() {
     <div class="stats">
       <div class="stat"><b>${triedCount}</b><span>מוצרים</span></div>
       <div class="stat"><b>${allergenDone}/${activeAllergens().length}</b><span>אלרגנים</span></div>
-      <div class="stat"><b>${state.logs.filter((l) => !l.seed && Date.now() - l.ts < 7 * DAY).length}</b><span>השבוע</span></div>
+      <div class="stat"><b>${kidLogs().filter((l) => !l.seed && Date.now() - l.ts < 7 * DAY).length}</b><span>השבוע</span></div>
     </div>
   </section>
   ${ageNote}
@@ -301,7 +345,7 @@ function homeHTML() {
   </section>
   <button class="btn block big-cta" data-action="picker">＋ רישום טעימה</button>
   ${recipeOfDayHTML()}
-  <div class="section-row"><h3 class="section-title">🕒 טעימות אחרונות</h3>${state.logs.length ? '<a href="#" class="see-all" data-action="journal">ליומן המלא ←</a>' : ''}</div>
+  <div class="section-row"><h3 class="section-title">🕒 טעימות אחרונות</h3>${kidLogs().length ? '<a href="#" class="see-all" data-action="journal">ליומן המלא ←</a>' : ''}</div>
   ${recent.length ? `<div class="card list">${recent.map((l) => logHTML(l, true)).join('')}</div>` : `<div class="card empty"><span class="e-emoji">🥄</span><p>עוד אין טעימות.<br>לחצו על ＋ למטה כדי לרשום את הראשונה.</p></div>`}
   <div class="section-row"><h3 class="section-title">📝 פנינת חוכמה</h3><a href="#" class="see-all" data-action="tips">לכל הפתקים ←</a></div>
   <div class="note-home">${noteHTML(noteOfDay(), true)}</div>
@@ -315,7 +359,7 @@ function weekStripHTML() {
   let out = '';
   for (let i = 6; i >= 0; i--) {
     const d = today - i * DAY;
-    const n = state.logs.filter((l) => !l.seed && startOfDay(l.ts) === d).length;
+    const n = kidLogs().filter((l) => !l.seed && startOfDay(l.ts) === d).length;
     out += `<div class="wday ${i === 0 ? 'today' : ''} ${n ? 'has' : ''}"><span>${days[new Date(d).getDay()]}</span><i>${n || ''}</i></div>`;
   }
   return `<div class="week-strip" aria-label="טעימות בשבוע האחרון">${out}</div>`;
@@ -439,8 +483,8 @@ function allergenCardHTML(i) {
 }
 
 function journalHTML() {
-  if (!state.logs.length) return subHead('📖 יומן טעימות') + `<div class="empty"><span class="e-emoji">📖</span><p>היומן ריק. כל טעימה שתרשמו תופיע כאן.</p></div>`;
-  const sorted = [...state.logs].sort((a, b) => b.ts - a.ts);
+  if (!kidLogs().length) return subHead('📖 יומן טעימות') + `<div class="empty"><span class="e-emoji">📖</span><p>היומן ריק. כל טעימה שתרשמו תופיע כאן.</p></div>`;
+  const sorted = kidLogs().sort((a, b) => b.ts - a.ts);
   const groups = [];
   for (const l of sorted) {
     const d = startOfDay(l.ts);
@@ -448,7 +492,7 @@ function journalHTML() {
     groups[groups.length - 1].items.push(l);
   }
   return `${subHead('📖 יומן טעימות')}
-  <p class="small muted">${state.logs.length} טעימות · ${new Set(state.logs.map((l) => l.foodId)).size} מוצרים שונים · לחצו על טעימה כדי לערוך</p>
+  <p class="small muted">${kidLogs().length} טעימות · ${new Set(kidLogs().map((l) => l.foodId)).size} מוצרים שונים · לחצו על טעימה כדי לערוך</p>
   ${groups.map((g) => `
     <div class="day-head">${new Date(g.d).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
     <div class="card list">${g.items.map((l) => logHTML(l, true, true)).join('')}</div>`).join('')}`;
@@ -547,11 +591,12 @@ function bindView() {
     if (t.dataset.edit) { const l = state.logs.find((x) => x.id === t.dataset.edit); return l && openLog(l.foodId, l); }
     if (t.hasAttribute('data-goto-guide')) { e.preventDefault(); tipsSeg = 'guide'; return go('guide'); }
     const a = t.dataset.action;
-    if (['journal', 'tips', 'back', 'picker'].includes(a)) e.preventDefault();
+    if (['journal', 'tips', 'back', 'picker', 'kids'].includes(a)) e.preventDefault();
     if (a === 'picker') openPicker();
     if (a === 'journal') go('journal');
     if (a === 'tips') { tipsSeg = 'notes'; go('guide'); }
     if (a === 'back') go('home');
+    if (a === 'kids') { e.preventDefault(); openKids(); }
     if (a === 'addfood') openAddFood();
     if (a === 'calendar') downloadICS();
     if (a === 'shufflenote') {
@@ -599,7 +644,7 @@ function quickAllergen(key) {
 // רישום בלחיצה אחת, עם אפשרות לבטל או להוסיף פרטים
 function quickLog(foodId) {
   const f = foodById(foodId);
-  const log = { id: uid(), foodId, ts: Date.now(), amount: 'taste', symptoms: [], notes: '' };
+  const log = { id: uid(), kid: activeKidId(), foodId, ts: Date.now(), amount: 'taste', symptoms: [], notes: '' };
   state.logs.push(log);
   save(); closeModal(); render();
   const count = logsFor(foodId).length;
@@ -616,7 +661,7 @@ function openPicker() {
     const l = allergenLogs(r.info.key).find((x) => !x.seed) || allergenLogs(r.info.key)[0];
     return foodById(l?.foodId) || foodById(r.info.a.rep);
   }).filter(Boolean);
-  const recentIds = [...new Set(state.logs.filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).map((l) => l.foodId))].slice(0, 8);
+  const recentIds = [...new Set(kidLogs().filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).map((l) => l.foodId))].slice(0, 8);
   const recent = recentIds.map(foodById).filter(Boolean);
   const tile = (f) => `<button class="pick-tile ${f.allergen ? 'is-allergen' : ''}" data-pick="${f.id}"><span class="anim-${f.anim}" style="${animStyle(f)}">${foodIcon(f)}</span><b>${esc(f.name)}</b></button>`;
   let cat = 'all';
@@ -824,12 +869,46 @@ function openRecipeLog(r) {
       const ts = $('[data-body="time"]', b).hidden ? Date.now() : (new Date($('#rlTime', b).value).getTime() || Date.now());
       const liked = $('[data-group="liked"] .on', b)?.dataset.val;
       const symptoms = $$('.sym-pick input:checked', b).map((x) => x.value);
-      for (const foodId of foods) state.logs.push({ id: uid(), foodId, ts, liked, amount: 'meal', symptoms, notes: `מתוך: ${r.name}` });
+      for (const foodId of foods) state.logs.push({ id: uid(), kid: activeKidId(), foodId, ts, liked, amount: 'meal', symptoms, notes: `מתוך: ${r.name}` });
       save(); closeModal();
       if (symptoms.length) toast('נשמר. עקבו אחרי התסמינים והתייעצו עם רופא/ה 🩺');
       else celebrate(r.emoji, `${foods.length} טעימות נרשמו! 👩‍🍳`);
       render();
     });
+  });
+}
+
+/* ===================== ילדים ===================== */
+function openKids() {
+  const act = activeKidId();
+  openModal(`
+    <h2 class="sheet-title">👶 הילדים</h2>
+    <div class="kid-list">
+      ${state.kids.map((k) => `
+        <div class="kid-row ${k.id === act ? 'on' : ''}">
+          <button class="kid-pick" data-kid="${k.id}">${avatarHTML(52, k.avatar)}<span><b>${esc(k.baby?.name || 'ללא שם')}</b><small>${ageText(k.baby?.birth)} · ${state.logs.filter((l) => (l.kid || state.kids[0].id) === k.id).length} טעימות</small></span>${k.id === act ? '<em>✓ נבחר</em>' : ''}</button>
+          ${state.kids.length > 1 ? `<button class="kid-del" data-delkid="${k.id}" aria-label="הסרה">🗑️</button>` : ''}
+        </div>`).join('')}
+    </div>
+    <button class="btn block accent" id="addKid" style="margin-top:14px">＋ הוספת ילד/ה</button>
+    <p class="small muted" style="text-align:center">כל ילד/ה עם מעקב אלרגנים, טעימות ואווטאר משלו. הבחירה נשמרת בכל מכשיר בנפרד.</p>
+  `, (b) => {
+    b.onclick = (e) => {
+      const pick = e.target.closest('[data-kid]'), del = e.target.closest('[data-delkid]');
+      if (pick) {
+        setActiveKid(pick.dataset.kid); closeModal(); render();
+        return toast(`עכשיו במעקב: ${babyName()} ${state.avatar?.emoji || '👶'}`);
+      }
+      if (del) {
+        const k = state.kids.find((x) => x.id === del.dataset.delkid);
+        if (!confirm(`להסיר את ${k.baby?.name || 'הילד/ה'} ואת כל הטעימות שלו/ה? לא ניתן לבטל.`)) return;
+        state.kids = state.kids.filter((x) => x.id !== k.id);
+        state.logs = state.logs.filter((l) => l.kid !== k.id);
+        if (activeKidId() === undefined && state.kids[0]) setActiveKid(state.kids[0].id);
+        save(); closeModal(); render(); toast('הוסר');
+      }
+    };
+    $('#addKid', b).onclick = () => { closeModal(); startAddKid(); };
   });
 }
 
@@ -982,7 +1061,7 @@ function openLog(foodId, edit) {
         save(); closeModal(); render();
         return toast('השינויים נשמרו ✓');
       }
-      const log = { id: uid(), foodId, ...data };
+      const log = { id: uid(), kid: activeKidId(), foodId, ...data };
       state.logs.push(log);
       save(); closeModal(); render();
       const count = logsFor(foodId).length;
@@ -1082,6 +1161,7 @@ function openSettings() {
     <form class="form" id="setForm">
       <label for="stParent">השם שלך</label>
       <input type="text" id="stParent" value="${esc(state.parent?.name)}" maxlength="30">
+      <button type="button" class="opt-row" id="kidsBtn" style="margin-top:14px">👶 <span>${state.kids.length > 1 ? `${state.kids.length} ילדים` : 'הוספת ילד/ה נוסף/ת'}</span><em>ניהול</em></button>
       <label for="stName">שם התינוק</label>
       <input type="text" id="stName" value="${esc(state.baby?.name)}" maxlength="30">
       <label for="stGender">בן או בת</label>
@@ -1149,6 +1229,7 @@ function openSettings() {
       state = Object.assign(defaultState(), Cloud.active ? { parent: state.parent } : {}); save(); closeModal(); go('home');
     };
     $('#avatarBtn', b).onclick = openAvatarModal;
+    $('#kidsBtn', b).onclick = openKids;
     $('#logoutBtn', b).onclick = () => {
       closeModal();
       if (Cloud.active) { Cloud.logout(); return toast('התנתקת. להתראות 👋'); }

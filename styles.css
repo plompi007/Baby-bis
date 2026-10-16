@@ -668,3 +668,15 @@ details.why { margin-top: 18px; }
 .join-form { margin: 0; }
 .invite-code { font-size: 34px; font-weight: 800; letter-spacing: 8px; text-align: center; padding: 10px; margin: 8px 0 12px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); color: var(--accent); }
 .sync-on { color: var(--green); font-weight: 500; }
+
+/* ===== כמה ילדים ===== */
+.kid-switch { margin-top: 6px; border: 0; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: #fff; background: rgba(255,255,255,.22); }
+.kid-switch:active { transform: scale(.95); }
+.kid-list { display: grid; gap: 10px; }
+.kid-row { display: flex; align-items: center; gap: 8px; }
+.kid-pick { flex: 1; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 18px; border: 2px solid var(--line); background: var(--card); text-align: start; }
+.kid-row.on .kid-pick { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); }
+.kid-pick > span:not(.avatar) { flex: 1; display: flex; flex-direction: column; }
+.kid-pick small { color: var(--muted); }
+.kid-pick em { font-style: normal; color: var(--primary); font-weight: 700; font-size: 13px; }
+.kid-del { border: 0; background: none; font-size: 18px; opacity: .6; padding: 8px; }

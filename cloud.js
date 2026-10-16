@@ -10,7 +10,7 @@
 
 const Cloud = (() => {
   const SDK = ['firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js'];
-  const FAMILY_KEYS = ['v', 'onboarded', 'baby', 'avatar', 'customFoods', 'cleared'];
+  const FAMILY_KEYS = ['v', 'onboarded', 'kids', 'customFoods'];
   const USER_KEYS = ['parent', 'favNotes', 'favRecipes'];
   const DEVICE_KEY = 'bis-rishon-device';
 

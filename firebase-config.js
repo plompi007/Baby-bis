@@ -20,3 +20,5 @@ window.FIREBASE_CONFIG = {
   appId: '...',
 };
 */
+// מצב מקומי מפורש (לבדיקות, או למי שמעדיף בלי ענן): ?local=1
+if (new URLSearchParams(location.search).has('local')) window.FIREBASE_CONFIG = null;

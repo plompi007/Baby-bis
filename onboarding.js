@@ -158,7 +158,7 @@ const EXPOSURE_OPTS = [
 let wizard = null;
 
 function startWizard() {
-  const hasHistory = state.logs.length > 0; // משתמשים ותיקים – לא שואלים שוב על חשיפות
+  const hasHistory = kidLogs().length > 0; // משתמשים ותיקים – לא שואלים שוב על חשיפות
   let steps = ['parent', 'baby', 'avatar'];
   if (!hasHistory) steps.push('allergens', 'foods');
   steps.push('done');
@@ -177,6 +177,25 @@ function startWizard() {
   };
 }
 
+// הוספת ילד/ה: שאלון בלי שם ההורה
+function startAddKid() {
+  const prev = activeKidId();
+  const k = newKid(state);
+  setActiveKid(k.id);
+  wizard = null;
+  startWizard();
+  wizard.steps = ['baby', 'avatar', 'allergens', 'foods', 'done'];
+  wizard.addKid = { prev, id: k.id };
+  render();
+}
+function cancelAddKid() {
+  const { prev, id } = wizard.addKid;
+  state.kids = state.kids.filter((x) => x.id !== id);
+  if (prev) setActiveKid(prev);
+  wizard = null;
+  render();
+}
+
 function renderWizard() {
   if (!wizard) startWizard();
   const w = wizard;
@@ -186,13 +205,14 @@ function renderWizard() {
   $('#view').innerHTML = `
   <div class="wizard">
     <div class="wz-top">
-      ${w.i > 0 && step !== 'done' ? '<button class="wz-back" id="wzBack" aria-label="חזרה">→</button>' : '<span></span>'}
+      ${w.i > 0 && step !== 'done' ? '<button class="wz-back" id="wzBack" aria-label="חזרה">→</button>' : w.addKid && step !== 'done' ? '<button class="wz-back" id="wzCancel" aria-label="ביטול">✕</button>' : '<span></span>'}
       <div class="wz-dots">${dots}</div>
       <span></span>
     </div>
     <div class="wz-step ${w.dir > 0 ? 'in-next' : 'in-prev'}">${body}</div>
   </div>`;
   $('#wzBack')?.addEventListener('click', () => { w.i--; w.dir = -1; renderWizard(); });
+  $('#wzCancel')?.addEventListener('click', cancelAddKid);
   ({ parent: bindParent, baby: bindBaby, avatar: bindAvatarStep, allergens: bindAllergens, foods: bindFoods, done: bindDone })[step]();
   window.scrollTo({ top: 0 });
 }
@@ -357,7 +377,7 @@ function bindDone() {
     wizard = null;
     tab = 'home';
     render();
-    celebrate('🎉', `ברוכים הבאים, ${state.baby.name}!`);
+    celebrate('🎉', w.addKid ? `${state.baby.name} הצטרף/ה למשפחה!` : `ברוכים הבאים, ${state.baby.name}!`);
   };
 }
 
@@ -365,7 +385,7 @@ function bindDone() {
 function seedExposures(exposures, foodIds) {
   const now = Date.now();
   const add = (foodId, daysAgo, symptoms = []) => state.logs.push({
-    id: uid(), foodId, ts: now - daysAgo * DAY, liked: undefined, amount: undefined, symptoms, notes: 'מהשאלון הראשוני', seed: true,
+    id: uid(), kid: activeKidId(), foodId, ts: now - daysAgo * DAY, liked: undefined, amount: undefined, symptoms, notes: 'מהשאלון הראשוני', seed: true,
   });
   for (const [k, v] of Object.entries(exposures)) {
     const f = ALLERGENS[k].rep;
@@ -524,6 +544,7 @@ if (Cloud.enabled()) {
     onLoading: () => { cloudPhase = 'loading'; render(); },
     onNeedsFamily: () => { cloudPhase = 'needsFamily'; currentUser = null; render(); },
     onChange: (merged, initial) => {
+      if (wizard?.addKid) return; // באמצע הוספת ילד/ה – מחכים לסיום
       const inWizard = !!wizard;
       const same = cloudPhase === 'ready' && JSON.stringify(merged) === JSON.stringify(state);
       cloudPhase = 'ready';
