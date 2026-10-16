@@ -1,5 +1,5 @@
 // Service worker: עבודה ללא חיבור + פתיחת האפליקציה בלחיצה על התראה
-const CACHE = 'bis-rishon-v9';
+const CACHE = 'bis-rishon-v10';
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'cloud.js', 'firebase-config.js', 'auth.js', 'onboarding.js', 'data.js', 'fx.js', 'icons.js', 'content.js', 'manifest.json', 'icons/icon.svg'];
 
 self.addEventListener('install', (e) => {
