@@ -410,8 +410,6 @@ const AI_STYLES = [
     p: 'a hand-drawn Japanese animation character: clean line art, soft cel shading, warm dreamy colors, gentle painted background' },
   { id: 'felt', e: '🧸', he: 'בובת לבד', en: 'Felt doll', d: L('רכה וחמודה', 'Soft and cuddly'),
     p: 'a handmade needle-felted wool doll: fuzzy felt texture, tiny stitched details, soft studio lighting, photographed like a real toy' },
-  { id: 'clay', e: '🏺', he: 'פלסטלינה', en: 'Clay', d: L('דמות סטופ־מושן', 'Stop-motion figure'),
-    p: 'a stop-motion clay figure: handcrafted plasticine look, visible fingerprints and sculpted texture, soft lighting' },
   { id: 'sticker', e: '⭐', he: 'מדבקה', en: 'Sticker', d: L('קריקטורה שטוחה ועליזה', 'Flat, cheerful cartoon'),
     p: 'a cute flat cartoon sticker: bold clean outlines, simple flat colors, thick white sticker border' },
 ];
@@ -427,8 +425,8 @@ function aiAvatarHTML() {
     <summary><span>✨</span><b>${L('אווטאר מצויר עם Gemini', 'Illustrated avatar with Gemini')}</b><em>${L('חינם', 'Free')}</em></summary>
     <p class="small muted">${L('הופכים תמונה של הילד/ה לדמות מצוירת בעזרת Gemini של Google, בחינם עם חשבון Google רגיל. לוקח כדקה.', 'Turn a photo of your child into an illustrated character with Google Gemini – free with a regular Google account. Takes about a minute.')}</p>
     <ol class="ai-steps">
-      <li><b>${L('בחרו סגנון', 'Pick a style')}</b>
-        <div class="ai-styles">${AI_STYLES.map((st, i) => `<button type="button" class="ai-style ${i === 0 ? 'on' : ''}" data-aistyle="${st.id}"><span>${st.e}</span><b>${L(st.he, st.en)}</b><small>${st.d}</small></button>`).join('')}</div>
+      <li><b>${L('בחרו סגנון', 'Pick a style')}</b> <span class="small muted">${L('(דוגמאות אמיתיות שנוצרו ב-Gemini)', '(real examples made with Gemini)')}</span>
+        <div class="ai-styles">${AI_STYLES.map((st, i) => `<button type="button" class="ai-style ${i === 0 ? 'on' : ''}" data-aistyle="${st.id}"><img src="icons/styles/${st.id}.jpg" alt="" loading="lazy" width="200" height="200"><b>${st.e} ${L(st.he, st.en)}</b><small>${st.d}</small></button>`).join('')}</div>
       </li>
       <li><b>${L('מעתיקים את ההוראה ופותחים את Gemini', 'Copy the instruction and open Gemini')}</b>
         <button type="button" class="btn block ai-go" id="aiGo">📋 ${L('העתקה ופתיחת Gemini', 'Copy & open Gemini')} ↗</button>
