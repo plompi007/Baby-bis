@@ -348,6 +348,7 @@ function homeHTML() {
     <button data-action="memories"><span>📸</span>${L('זיכרונות', 'Memories')}</button>
     <button data-action="report"><span>🩺</span>${L('לרופא/ה', 'Doctor')}</button>
   </nav>
+  ${installCardHTML()}
   ${ageNote}
   ${alerts.map(reminderHTML).join('')}
   <section class="card today">
@@ -607,6 +608,8 @@ function bindView() {
     if (['journal', 'tips', 'back', 'picker', 'kids', 'plan', 'progress', 'memories', 'report'].includes(a)) e.preventDefault();
     if (['plan', 'progress', 'memories', 'report'].includes(a)) return go(a);
     if (a === 'shopping') return openShopping();
+    if (a === 'install') return openInstall();
+    if (a === 'install-x') { try { localStorage.setItem('bis-install-x', '1'); } catch { /* ללא אחסון */ } return render(); }
     if (a === 'print') return printReport();
     if (a === 'picker') openPicker();
     if (a === 'journal') go('journal');
@@ -1242,6 +1245,8 @@ function openSettings() {
       <button type="button" class="btn accent block" id="shareBtn">📤 ${L('שליחת הזמנה', 'Send invite')}</button>
       <p class="small muted" style="text-align:center;margin:8px 0 0">${Cloud.members > 1 ? L(`👥 ${Cloud.members} הורים מחוברים`, `👥 ${Cloud.members} parents connected`) : L('עדיין רק את מחוברת', 'Only you are connected so far')}</p>
     </div>` : ''}
+    ${isStandalone() ? '' : `<h3 class="section-title">📲 ${L('התקנה בטלפון', 'Install on your phone')}</h3>
+    <button class="btn ghost block" id="installBtn">📲 ${L('התקנת Baby Bis למסך הבית', 'Add Baby Bis to your home screen')}</button>`}
     <h3 class="section-title">🌐 ${L('שפה', 'Language')}</h3>
     <div class="segment lang-seg"><button type="button" class="${IS_EN ? '' : 'on'}" data-lang="he">עברית</button><button type="button" class="${IS_EN ? 'on' : ''}" data-lang="en">English</button></div>
     <h3 class="section-title">👤 ${L('חשבון', 'Account')}</h3>
@@ -1276,6 +1281,7 @@ function openSettings() {
     };
     $('#avatarBtn', b).onclick = openAvatarModal;
     $('#kidsBtn', b).onclick = openKids;
+    $('#installBtn', b)?.addEventListener('click', openInstall);
     $$('[data-lang]', b).forEach((x) => { x.onclick = () => { if (x.dataset.lang !== LANG) setLang(x.dataset.lang); }; });
     $('#logoutBtn', b).onclick = () => {
       closeModal();

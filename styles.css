@@ -812,3 +812,14 @@ details.past-days summary { cursor: pointer; color: var(--muted); font-weight: 5
 .ai-picked .btn { flex: 1; margin: 0; }
 #aiShareBox .btn + .ai-picked, #aiShareBox p { margin-top: 8px; }
 #aiPickBtn { display: block; text-align: center; cursor: pointer; margin-top: 8px; }
+
+/* ===== התקנה ===== */
+.install-card { display: flex; align-items: center; gap: 6px; padding: 10px 12px; background: linear-gradient(135deg, rgba(124,108,242,.12), rgba(255,138,101,.12)); }
+.install-main { flex: 1; display: flex; align-items: center; gap: 10px; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; padding: 0; }
+.install-main > span:first-child { font-size: 26px; }
+.install-main b { display: block; }
+.install-main small { color: var(--muted); font-size: 12px; }
+.install-x { border: 0; background: none; color: var(--muted); font-size: 16px; padding: 6px; cursor: pointer; }
+.inst-steps { padding-inline-start: 22px; }
+.inst-steps li { margin: 10px 0; line-height: 1.5; }
+.inst-steps li::marker { font-weight: 800; color: #7c6cf2; }

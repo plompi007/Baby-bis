@@ -365,3 +365,67 @@ function printReport() {
   document.body.classList.add('printing');
   setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('printing'), 500); }, 50);
 }
+
+/* ===================== התקנה למסך הבית ===================== */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; });
+window.addEventListener('appinstalled', () => { installEvt = null; toast(L('Baby Bis הותקנה במסך הבית 🎉', 'Baby Bis was added to your home screen 🎉')); });
+
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function installEnv() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (/FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/.test(ua) || (ios && !/Safari\//.test(ua))) return 'inapp';
+  if (ios) return 'ios';
+  if (/SamsungBrowser/.test(ua)) return 'samsung';
+  if (/Android/.test(ua)) return 'android';
+  return 'desktop';
+}
+
+function installCardHTML() {
+  let x = false; try { x = !!localStorage.getItem('bis-install-x'); } catch { /* ללא אחסון */ }
+  if (isStandalone() || x) return '';
+  return `<div class="card install-card"><button class="install-main" data-action="install"><span>📲</span><span><b>${L('התקינו את Baby Bis בטלפון', 'Install Baby Bis on your phone')}</b><small>${L('נפתח במסך מלא, בלחיצה אחת מהמסך הבית', 'Opens full-screen, one tap from your home screen')}</small></span></button><button class="install-x" data-action="install-x" aria-label="${L('לא עכשיו', 'Not now')}">✕</button></div>`;
+}
+
+function openInstall() {
+  const env = installEnv();
+  const steps = {
+    inapp: [L('האתר נפתח בתוך אפליקציה אחרת (וואטסאפ, אינסטגרם וכו׳), ומשם אי אפשר להתקין.', 'The site is open inside another app (WhatsApp, Instagram, etc.), which can’t install apps.'),
+      L('לוחצים על <b>⋮</b> או <b>…</b> בפינת המסך ← <b>פתיחה בדפדפן</b> (כרום או ספארי).', 'Tap <b>⋮</b> or <b>…</b> in the corner → <b>Open in browser</b> (Chrome or Safari).'),
+      L('אין כפתור כזה? מעתיקים את הקישור למטה ומדביקים בכרום / ספארי.', 'No such button? Copy the link below and paste it in Chrome / Safari.'),
+      L('ושם פותחים שוב את המדריך הזה מההגדרות ⚙️', 'Then open this guide again from settings ⚙️')],
+    ios: [L('פותחים את האתר ב<b>ספארי</b> (בכרום באייפון זה עובד גם, דרך כפתור השיתוף).', 'Open the site in <b>Safari</b> (Chrome on iPhone works too, via its share button).'),
+      L('לוחצים על כפתור השיתוף <b>⬆️</b> (ריבוע עם חץ למעלה, בתחתית המסך או ליד הכתובת).', 'Tap the share button <b>⬆️</b> (a square with an up arrow, at the bottom or next to the address).'),
+      L('גוללים למטה ובוחרים <b>הוספה למסך הבית</b> ➕', 'Scroll down and choose <b>Add to Home Screen</b> ➕'),
+      L('לוחצים <b>הוספה</b> – והאייקון 🥄 יופיע במסך הבית.', 'Tap <b>Add</b> – the 🥄 icon appears on your home screen.')],
+    android: [L('פותחים את האתר ב<b>כרום</b>.', 'Open the site in <b>Chrome</b>.'),
+      L('לוחצים על <b>⋮</b> (שלוש נקודות למעלה בפינה).', 'Tap <b>⋮</b> (three dots in the top corner).'),
+      L('בוחרים <b>התקנת אפליקציה</b> או <b>הוספה למסך הבית</b>.', 'Choose <b>Install app</b> or <b>Add to Home screen</b>.'),
+      L('מאשרים <b>התקנה</b> ✓', 'Confirm <b>Install</b> ✓')],
+    samsung: [L('לוחצים על <b>☰</b> (התפריט בתחתית המסך).', 'Tap <b>☰</b> (the menu at the bottom).'),
+      L('בוחרים <b>הוספת דף אל</b> ← <b>מסך הבית</b>.', 'Choose <b>Add page to</b> → <b>Home screen</b>.'),
+      L('מאשרים <b>הוספה</b> ✓', 'Confirm <b>Add</b> ✓')],
+    desktop: [L('בכרום או באדג׳: לוחצים על סמל ההתקנה ⊕ בצד שורת הכתובת.', 'In Chrome or Edge: click the install icon ⊕ at the side of the address bar.'),
+      L('או: תפריט <b>⋮</b> ← <b>התקנת Baby Bis</b>.', 'Or: menu <b>⋮</b> → <b>Install Baby Bis</b>.'),
+      L('הכי נוח בטלפון – פתחו את הקישור בטלפון והתקינו שם 📱', 'Easiest on a phone – open the link on your phone and install there 📱')],
+  }[env];
+  openModal(`
+    <h2 class="sheet-title">📲 ${L('התקנת Baby Bis', 'Install Baby Bis')}</h2>
+    <p class="small muted">${L('האפליקציה מותקנת ישר מהאתר, בלי חנות אפליקציות – בחינם ובלי הרשמה נוספת.', 'The app installs straight from the website – no app store, free, no extra sign-up.')}</p>
+    ${installEvt ? `<button class="btn block" id="instNow">📲 ${L('התקנה עכשיו', 'Install now')}</button><p class="small muted" style="text-align:center">${L('או ידנית:', 'or manually:')}</p>` : ''}
+    <ol class="inst-steps">${steps.map((t) => `<li>${t}</li>`).join('')}</ol>
+    ${env === 'inapp' ? `<button class="btn ghost block" id="instCopy">🔗 ${L('העתקת הקישור', 'Copy the link')}</button>` : ''}
+    <p class="small muted" style="margin-top:14px">💡 ${L('אחרי ההתקנה פותחים את Baby Bis מהאייקון 🥄. הנתונים שלכם נשארים – מתחברים עם אותו חשבון.', 'After installing, open Baby Bis from the 🥄 icon. Your data stays – sign in with the same account.')}</p>`);
+  const b = $('#modalBody');
+  $('#instNow', b)?.addEventListener('click', async () => {
+    const ev = installEvt; if (!ev) return;
+    ev.prompt();
+    const r = await ev.userChoice.catch(() => null);
+    if (r?.outcome === 'accepted') { installEvt = null; closeModal(); }
+  });
+  $('#instCopy', b)?.addEventListener('click', async () => {
+    const url = location.origin + location.pathname;
+    try { await navigator.clipboard.writeText(url); toast(L('הקישור הועתק 📋', 'Link copied 📋')); } catch { prompt(L('העתיקו את הקישור:', 'Copy the link:'), url); }
+  });
+}
