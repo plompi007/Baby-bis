@@ -1,0 +1,43 @@
+rules_version = '2';
+// כללי אבטחה ל-Baby Bis: כל משפחה רואה ועורכת רק את הנתונים שלה.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function memberAfter(fid) { return signedIn() && request.auth.uid in getAfter(/databases/$(db)/documents/families/$(fid)).data.members; }
+    function memberNow(fid) { return signedIn() && request.auth.uid in get(/databases/$(db)/documents/families/$(fid)).data.members; }
+
+    // נתונים אישיים – רק המשתמש עצמו
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /families/{fid} {
+      allow create: if signedIn() && request.resource.data.members == [request.auth.uid];
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow update: if signedIn() && (
+        request.auth.uid in resource.data.members
+        // הצטרפות עם קוד הזמנה: מותר רק להוסיף את עצמך, ורק עם קוד תקף של המשפחה הזו
+        // (הקוד נשמר תחת המזהה של המצטרף, כך שאי אפשר "לרכוב" על קוד שמישהו אחר כבר השתמש בו)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'joins'])
+            && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+            && request.auth.uid in request.resource.data.joins
+            && !(request.auth.uid in resource.data.get('joins', {}))
+            && get(/databases/$(db)/documents/invites/$(request.resource.data.joins[request.auth.uid])).data.familyId == fid)
+      );
+      allow delete: if false;
+
+      match /logs/{logId} {
+        allow read: if memberNow(fid);
+        allow write: if memberAfter(fid);
+      }
+    }
+
+    // קודי הזמנה: אפשר לבדוק קוד מסוים, אי אפשר לסרוק את כולם
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if memberAfter(request.resource.data.familyId);
+      allow delete: if memberNow(resource.data.familyId);
+    }
+  }
+}

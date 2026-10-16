@@ -649,3 +649,22 @@ details.why { margin-top: 18px; }
 }
 
 .recipe-link { font-size: 15px; }
+
+/* ===== ענן ===== */
+.or { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.btn.google { background: var(--card); color: var(--ink); border: 2px solid var(--line); box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.forgot { display: block; margin: 10px auto 0; }
+.dots-loader { display: flex; gap: 8px; justify-content: center; margin-top: 18px; }
+.dots-loader i { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); animation: bounce 1.2s ease-in-out infinite; }
+.dots-loader i:nth-child(2) { animation-delay: .15s; } .dots-loader i:nth-child(3) { animation-delay: .3s; }
+.fam-choices { display: grid; gap: 12px; margin-top: 16px; text-align: start; }
+.fam-choice { display: grid; grid-template-columns: 52px 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; padding: 16px; border-radius: 20px; border: 2px solid var(--line); background: var(--card); box-shadow: var(--shadow); text-align: start; }
+.fam-choice span { grid-row: span 2; font-size: 36px; text-align: center; }
+.fam-choice b { font-size: 17px; }
+.fam-choice small { color: var(--muted); }
+.fam-choice:active { transform: scale(.98); }
+.fam-choice:disabled { opacity: .5; }
+.join-form { margin: 0; }
+.invite-code { font-size: 34px; font-weight: 800; letter-spacing: 8px; text-align: center; padding: 10px; margin: 8px 0 12px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); color: var(--accent); }
+.sync-on { color: var(--green); font-weight: 500; }

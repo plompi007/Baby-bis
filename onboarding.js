@@ -38,9 +38,12 @@ function authHTML() {
         </div>
         <div class="auth-err" id="auErr" role="alert"></div>
         <button class="btn block" type="submit" id="auSubmit">${authMode === 'register' ? 'יצירת חשבון ✨' : 'כניסה'}</button>
+        ${cloudOn() && authMode === 'login' ? '<button type="button" class="link-btn forgot" id="auForgot">שכחתי סיסמה</button>' : ''}
       </form>
+      ${cloudOn() ? `<div class="or"><span>או</span></div>
+      <button type="button" class="btn google block" id="auGoogle"><svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> המשך עם Google</button>` : ''}
     </div>
-    <p class="small muted">🔒 החשבון והנתונים נשמרים במכשיר הזה בלבד, והסיסמה נשמרת מוצפנת.</p>
+    <p class="small muted">${cloudOn() ? '☁️ הנתונים מסונכרנים בענן, ואפשר לשתף אותם עם בן/בת הזוג.' : '🔒 החשבון והנתונים נשמרים במכשיר הזה בלבד, והסיסמה נשמרת מוצפנת.'}</p>
   </div>`;
 }
 
@@ -53,6 +56,10 @@ function bindAuth() {
     err.textContent = '';
     btn.disabled = true;
     try {
+      if (cloudOn()) {
+        await (authMode === 'register' ? Cloud.register : Cloud.login)($('#auEmail').value, $('#auPass').value);
+        return; // המשך הזרימה מגיע מ-onAuthStateChanged
+      }
       const fn = authMode === 'register' ? Auth.register : Auth.login;
       const id = await fn($('#auEmail').value, $('#auPass').value);
       load(id);
@@ -64,6 +71,80 @@ function bindAuth() {
       $('.auth-card').classList.remove('shake-x'); void $('.auth-card').offsetWidth; $('.auth-card').classList.add('shake-x');
     } finally { btn.disabled = false; }
   });
+  $('#auGoogle')?.addEventListener('click', async () => {
+    try { await Cloud.google(); } catch (ex) { $('#auErr').textContent = ex.message; }
+  });
+  $('#auForgot')?.addEventListener('click', async () => {
+    const email = $('#auEmail').value.trim();
+    if (!email) { $('#auErr').textContent = 'הקלידו את המייל שלכם ואז לחצו שוב על "שכחתי סיסמה"'; return; }
+    try { await Cloud.resetPassword(email); toast('שלחנו מייל לאיפוס הסיסמה 📧'); } catch (ex) { $('#auErr').textContent = ex.message; }
+  });
+}
+
+/* ===================== ענן: טעינה ובחירת משפחה ===================== */
+let cloudPhase = 'local'; // local / init / signedOut / loading / needsFamily / ready / error
+const cloudOn = () => cloudPhase !== 'local';
+
+function loaderHTML(msg) {
+  return `<div class="auth"><div class="auth-logo">🥄</div><h2 dir="ltr">Baby Bis</h2>
+    <p class="muted">${msg ? esc(msg) : 'רגע, מכינים הכל... ✨'}</p>${msg ? '' : '<div class="dots-loader"><i></i><i></i><i></i></div>'}</div>`;
+}
+
+// נתונים שנשמרו במכשיר הזה במצב מקומי, להעברה לענן
+function localDataOnDevice() {
+  const keys = Object.keys(localStorage).filter((k) => k.startsWith('bis-rishon-data:') || k === 'bis-rishon-v1');
+  const sess = localStorage.getItem('bis-rishon-session');
+  keys.sort((a, b) => (b.endsWith(sess) ? 1 : 0) - (a.endsWith(sess) ? 1 : 0));
+  for (const k of keys) {
+    try { const d = JSON.parse(localStorage.getItem(k)); if (d?.baby?.name) return d; } catch { /* דילוג */ }
+  }
+  return null;
+}
+
+function familyChoiceHTML() {
+  const local = localDataOnDevice();
+  return `
+  <div class="auth">
+    <div class="auth-logo">💛</div>
+    <h2>כמעט סיימנו!</h2>
+    <p class="muted">איך מתחילים?</p>
+    <div class="fam-choices">
+      ${local ? `<button class="fam-choice" data-fam="move"><span>📲</span><b>להעביר את ${esc(local.baby.name)} לענן</b><small>כל הטעימות שכבר רשמת במכשיר הזה יעברו לחשבון</small></button>` : ''}
+      <button class="fam-choice" data-fam="new"><span>✨</span><b>התחלה חדשה</b><small>שאלון קצר ומתחילים לעקוב</small></button>
+      <button class="fam-choice" data-fam="join"><span>👨‍👩‍👧</span><b>הצטרפות למשפחה קיימת</b><small>בן/בת הזוג כבר רשומים? הקלידו את קוד המשפחה</small></button>
+      <form class="card form join-form" id="joinForm" hidden>
+        <label for="joinCode">קוד המשפחה</label>
+        <input type="text" id="joinCode" dir="ltr" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="ABC234" required>
+        <div class="auth-err" id="joinErr" role="alert"></div>
+        <button class="btn block" type="submit">הצטרפות</button>
+      </form>
+    </div>
+    <button class="link-btn" id="famLogout" style="margin-top:16px">התנתקות</button>
+  </div>`;
+}
+
+function bindFamilyChoice() {
+  const busy = (on) => $$('.fam-choice').forEach((b) => { b.disabled = on; });
+  $$('.fam-choice').forEach((b) => b.onclick = async () => {
+    const kind = b.dataset.fam;
+    if (kind === 'join') { $('#joinForm').hidden = false; $('#joinCode').focus(); return; }
+    busy(true);
+    try {
+      if (kind === 'new') await Cloud.createFamily();
+      if (kind === 'move') {
+        const local = localDataOnDevice();
+        await Cloud.createFamily(Object.assign({}, local, { onboarded: !!local.onboarded }));
+        toast('הנתונים הועברו לענן ☁️');
+      }
+    } catch (ex) { toast(ex.message || 'משהו השתבש, נסו שוב'); busy(false); }
+  });
+  $('#joinForm').onsubmit = async (e) => {
+    e.preventDefault();
+    $('#joinErr').textContent = '';
+    try { await Cloud.joinFamily($('#joinCode').value); toast('הצטרפת למשפחה! 👨‍👩‍👧'); }
+    catch (ex) { $('#joinErr').textContent = ex.message; }
+  };
+  $('#famLogout').onclick = () => Cloud.logout();
 }
 
 /* ===================== שאלון פתיחה ===================== */
@@ -78,9 +159,11 @@ let wizard = null;
 
 function startWizard() {
   const hasHistory = state.logs.length > 0; // משתמשים ותיקים – לא שואלים שוב על חשיפות
-  const steps = ['parent', 'baby', 'avatar'];
+  let steps = ['parent', 'baby', 'avatar'];
   if (!hasHistory) steps.push('allergens', 'foods');
   steps.push('done');
+  // הצטרפות למשפחה קיימת: רק השם שלך
+  if (state.onboarded) steps = ['parent', 'done'];
   wizard = {
     steps, i: 0,
     parent: state.parent?.name || '',
@@ -433,9 +516,34 @@ function openAvatarModal() {
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
-load(Auth.session());
-render();
-maybeNotify();
+if (Cloud.enabled()) {
+  cloudPhase = 'init';
+  render();
+  Cloud.init({
+    onSignedOut: () => { cloudPhase = 'signedOut'; currentUser = null; state = defaultState(); wizard = null; closeModal(); render(); },
+    onLoading: () => { cloudPhase = 'loading'; render(); },
+    onNeedsFamily: () => { cloudPhase = 'needsFamily'; currentUser = null; render(); },
+    onChange: (merged, initial) => {
+      const inWizard = !!wizard;
+      const same = cloudPhase === 'ready' && JSON.stringify(merged) === JSON.stringify(state);
+      cloudPhase = 'ready';
+      currentUser = Cloud.uid();
+      state = merged;
+      if (same && !initial) return; // אין שינוי אמיתי – לא מרעננים את המסך
+      // לא מרעננים באמצע השאלון כדי לא למחוק מה שהוקלד – אלא אם השאלון כבר לא נדרש
+      if (inWizard && !initial) {
+        if (!(merged.onboarded && merged.parent?.name)) return;
+        wizard = null;
+      }
+      render();
+      if (initial) maybeNotify();
+    },
+  }).catch((e) => { console.warn(e); cloudPhase = 'error'; render(); });
+} else {
+  load(Auth.session());
+  render();
+  maybeNotify();
+}
 setInterval(() => { maybeNotify(); if ($('#modal').hidden) updateBadge(); }, 30 * 60 * 1000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && currentUser && state.onboarded && $('#modal').hidden) { maybeNotify(); render(); }

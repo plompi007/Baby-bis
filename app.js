@@ -50,6 +50,7 @@ function migrate(data) {
   return st;
 }
 function save() {
+  if (Cloud.active) return Cloud.save(state);
   if (!currentUser) return;
   try { localStorage.setItem(Auth.dataKey(currentUser), JSON.stringify(state)); }
   catch (e) { toast('לא ניתן לשמור במכשיר זה (אולי התמונה גדולה מדי) 😕'); }
@@ -234,13 +235,19 @@ const subHead = (title) => `<div class="subhead"><button class="back-btn" data-a
 
 function render() {
   const v = $('#view');
-  const gated = !currentUser || !state.onboarded;
+  const gated = !currentUser || !state.onboarded || (Cloud.active && !state.parent?.name);
   document.body.classList.toggle('gate', gated);
   $('#babyLine').textContent = state.baby && !gated && tab !== 'home' ? `${state.baby.name} · ${ageText(state.baby.birth)}` : 'מעקב טעימות ואלרגנים';
   $('#settingsBtn').innerHTML = !gated && state.avatar ? avatarHTML(40) : '⚙️';
   $('#tipsBtn').classList.toggle('on', tab === 'guide');
-  if (!currentUser) { v.innerHTML = authHTML(); bindAuth(); return; }
-  if (!state.onboarded) { renderWizard(); return; }
+  if (!currentUser) {
+    if (cloudPhase === 'init' || cloudPhase === 'loading') v.innerHTML = loaderHTML();
+    else if (cloudPhase === 'needsFamily') { v.innerHTML = familyChoiceHTML(); bindFamilyChoice(); }
+    else if (cloudPhase === 'error') v.innerHTML = loaderHTML('לא הצלחנו להתחבר לענן. בדקו את החיבור לאינטרנט ונסו לרענן.');
+    else { v.innerHTML = authHTML(); bindAuth(); }
+    return;
+  }
+  if (gated) { renderWizard(); return; }
   v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
   const views = { home: homeHTML, foods: foodsHTML, allergens: allergensHTML, recipes: recipesHTML, journal: journalHTML, guide: tipsHTML };
   v.innerHTML = views[tab]();
@@ -1069,7 +1076,7 @@ function openSettings() {
     <h2 style="margin-bottom:6px">⚙️ הגדרות</h2>
     <div class="profile-card">
       ${avatarHTML(72)}
-      <div><b>${esc(state.parent?.name || '')}</b><div class="small muted">${esc(Auth.emailOf(currentUser))}</div></div>
+      <div><b>${esc(state.parent?.name || '')}</b><div class="small muted">${esc(Cloud.active ? Cloud.email : Auth.emailOf(currentUser))}</div><div class="small ${Cloud.active ? 'sync-on' : 'muted'}">${Cloud.active ? '☁️ מסונכרן בענן' : '📱 נשמר במכשיר בלבד'}</div></div>
       <button class="btn small ghost" id="avatarBtn">📷 אווטאר</button>
     </div>
     <form class="form" id="setForm">
@@ -1102,11 +1109,19 @@ function openSettings() {
       <button class="btn ghost" id="exportBtn">ייצוא</button>
       <label class="btn ghost" style="text-align:center">ייבוא<input type="file" id="importInput" accept="application/json" hidden></label>
     </div>
-    <p class="small muted">הנתונים נשמרים רק במכשיר הזה. מומלץ לגבות מדי פעם.</p>
+    <p class="small muted">${Cloud.active ? 'הנתונים מגובים בענן. הייצוא הוא גיבוי נוסף לקובץ.' : 'הנתונים נשמרים רק במכשיר הזה. מומלץ לגבות מדי פעם.'}</p>
+    ${Cloud.active ? `
+    <h3 class="section-title">👨‍👩‍👧 שיתוף עם בן/בת הזוג</h3>
+    <div class="card share-card">
+      <p class="small">שלחו את הקוד לבן/בת הזוג. אחרי ההרשמה בוחרים "הצטרפות למשפחה קיימת" ומקלידים אותו, ומאותו רגע כל טעימה שאחד רושם מופיעה אצל השני.</p>
+      <div class="invite-code" dir="ltr">${esc(Cloud.inviteCode)}</div>
+      <button type="button" class="btn accent block" id="shareBtn">📤 שליחת הזמנה</button>
+      <p class="small muted" style="text-align:center;margin:8px 0 0">${Cloud.members > 1 ? `👥 ${Cloud.members} הורים מחוברים` : 'עדיין רק את מחוברת'}</p>
+    </div>` : ''}
     <h3 class="section-title">👤 חשבון</h3>
     <button class="btn ghost block" id="logoutBtn">🚪 התנתקות</button>
     <button class="btn danger block" id="resetBtn" style="margin-top:12px">מחיקת כל הנתונים והתחלה מחדש</button>
-    <button class="btn ghost block" id="delAccBtn" style="margin-top:12px;color:var(--red)">מחיקת החשבון מהמכשיר</button>
+    ${Cloud.active ? '' : '<button class="btn ghost block" id="delAccBtn" style="margin-top:12px;color:var(--red)">מחיקת החשבון מהמכשיר</button>'}
   `, (b) => {
     $('#setForm', b).addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1130,15 +1145,26 @@ function openSettings() {
     $('#exportBtn', b).onclick = exportData;
     $('#importInput', b).onchange = (e) => importData(e.target.files[0]);
     $('#resetBtn', b).onclick = () => {
-      if (!confirm('למחוק את כל הנתונים? לא ניתן לבטל.')) return;
-      state = defaultState(); save(); closeModal(); go('home');
+      if (!confirm(Cloud.active ? 'למחוק את כל הנתונים של המשפחה? זה ימחק אותם גם אצל בן/בת הזוג, ולא ניתן לבטל.' : 'למחוק את כל הנתונים? לא ניתן לבטל.')) return;
+      state = Object.assign(defaultState(), Cloud.active ? { parent: state.parent } : {}); save(); closeModal(); go('home');
     };
     $('#avatarBtn', b).onclick = openAvatarModal;
-    $('#logoutBtn', b).onclick = () => { Auth.logout(); load(null); closeModal(); go('home'); toast('התנתקת. להתראות 👋'); };
-    $('#delAccBtn', b).onclick = () => {
+    $('#logoutBtn', b).onclick = () => {
+      closeModal();
+      if (Cloud.active) { Cloud.logout(); return toast('התנתקת. להתראות 👋'); }
+      Auth.logout(); load(null); go('home'); toast('התנתקת. להתראות 👋');
+    };
+    $('#shareBtn', b)?.addEventListener('click', async () => {
+      const text = `הצטרפו למעקב הטעימות של ${babyName()} ב-Baby Bis 🥄\nקוד המשפחה: ${Cloud.inviteCode}\n${location.origin}${location.pathname}`;
+      try {
+        if (navigator.share) await navigator.share({ title: 'Baby Bis', text });
+        else { await navigator.clipboard.writeText(text); toast('ההזמנה הועתקה – אפשר להדביק בוואטסאפ 📋'); }
+      } catch { /* המשתמש/ת ביטל/ה */ }
+    });
+    $('#delAccBtn', b)?.addEventListener('click', () => {
       if (!confirm('למחוק את החשבון ואת כל הנתונים שלו מהמכשיר? לא ניתן לבטל.')) return;
       Auth.deleteAccount(currentUser); load(null); closeModal(); go('home');
-    };
+    });
   });
 }
 
