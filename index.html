@@ -27,26 +27,26 @@
       </div>
     </div>
     <div class="top-actions">
-      <button class="icon-btn" id="tipsBtn" aria-label="טיפים ומדריך">💡</button>
-      <button class="icon-btn" id="settingsBtn" aria-label="הגדרות ופרופיל">⚙️</button>
+      <button class="icon-btn" id="tipsBtn" aria-label="טיפים ומדריך" data-en-aria="Tips & guide">💡</button>
+      <button class="icon-btn" id="settingsBtn" aria-label="הגדרות ופרופיל" data-en-aria="Settings & profile">⚙️</button>
     </div>
   </header>
 
   <main id="view" class="view" tabindex="-1"></main>
 
-  <nav class="tabbar" aria-label="ניווט ראשי">
-    <button data-tab="home" class="active"><span>🏠</span>בית</button>
-    <button data-tab="foods"><span>🥕</span>מוצרים</button>
-    <button class="fab" id="fabBtn" aria-label="רישום טעימה"><span class="fab-in">＋</span><em>טעימה</em></button>
-    <button data-tab="allergens"><span>⭐</span>אלרגנים</button>
-    <button data-tab="recipes"><span>🍲</span>מתכונים</button>
+  <nav class="tabbar" aria-label="ניווט ראשי" data-en-aria="Main navigation">
+    <button data-tab="home" class="active" data-en="Home"><span>🏠</span>בית</button>
+    <button data-tab="foods" data-en="Foods"><span>🥕</span>מוצרים</button>
+    <button class="fab" id="fabBtn" aria-label="רישום טעימה" data-en-aria="Log a taste"><span class="fab-in">＋</span><em data-en="Taste">טעימה</em></button>
+    <button data-tab="allergens" data-en="Allergens"><span>⭐</span>אלרגנים</button>
+    <button data-tab="recipes" data-en="Recipes"><span>🍲</span>מתכונים</button>
   </nav>
 
   <div id="modal" class="modal" hidden>
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true">
       <div class="sheet-handle" aria-hidden="true"></div>
-      <button class="modal-x" data-close aria-label="סגירה">✕</button>
+      <button class="modal-x" data-close aria-label="סגירה" data-en-aria="Close">✕</button>
       <div id="modalBody"></div>
     </div>
   </div>
@@ -54,12 +54,15 @@
   <div id="celebrate" class="celebrate" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="i18n.js"></script>
   <script src="firebase-config.js"></script>
   <script src="auth.js"></script>
   <script src="data.js"></script>
   <script src="fx.js"></script>
   <script src="icons.js"></script>
   <script src="content.js"></script>
+  <script src="i18n-en-data.js"></script>
+  <script src="i18n-en-content.js"></script>
   <script src="cloud.js"></script>
   <script src="app.js"></script>
   <script src="features.js"></script>

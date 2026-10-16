@@ -22,33 +22,35 @@ function authHTML() {
     <div class="floaters" aria-hidden="true">${floaters.map((e, i) => `<span style="--i:${i}">${e}</span>`).join('')}</div>
     <div class="auth-logo">🥄</div>
     <h2 dir="ltr">Baby Bis</h2>
-    <p class="muted">כל טעימה נספרת 💛</p>
+    <p class="muted">${L('כל טעימה נספרת 💛', 'Every taste counts 💛')}</p>
+    <button type="button" class="lang-pill" id="auLang">🌐 ${L('English', 'עברית')}</button>
     <div class="card auth-card">
       <div class="segment">
-        <button type="button" class="${authMode === 'register' ? 'on' : ''}" data-mode="register">הרשמה</button>
-        <button type="button" class="${authMode === 'login' ? 'on' : ''}" data-mode="login">כניסה</button>
+        <button type="button" class="${authMode === 'register' ? 'on' : ''}" data-mode="register">${L('הרשמה', 'Sign up')}</button>
+        <button type="button" class="${authMode === 'login' ? 'on' : ''}" data-mode="login">${L('כניסה', 'Sign in')}</button>
       </div>
       <form class="form" id="authForm" novalidate>
-        <label for="auEmail">מייל</label>
+        <label for="auEmail">${L('מייל', 'Email')}</label>
         <input type="email" id="auEmail" autocomplete="email" required dir="ltr" placeholder="name@example.com">
-        <label for="auPass">סיסמה</label>
+        <label for="auPass">${L('סיסמה', 'Password')}</label>
         <div class="pass-wrap">
-          <input type="password" id="auPass" autocomplete="${authMode === 'login' ? 'current-password' : 'new-password'}" required minlength="6" dir="ltr" placeholder="${authMode === 'register' ? 'לפחות 6 תווים' : ''}">
-          <button type="button" class="pass-eye" id="auEye" aria-label="הצגת סיסמה">👁️</button>
+          <input type="password" id="auPass" autocomplete="${authMode === 'login' ? 'current-password' : 'new-password'}" required minlength="6" dir="ltr" placeholder="${authMode === 'register' ? L('לפחות 6 תווים', 'At least 6 characters') : ''}">
+          <button type="button" class="pass-eye" id="auEye" aria-label="${L('הצגת סיסמה', 'Show password')}">👁️</button>
         </div>
         <div class="auth-err" id="auErr" role="alert"></div>
-        <button class="btn block" type="submit" id="auSubmit">${authMode === 'register' ? 'יצירת חשבון ✨' : 'כניסה'}</button>
-        ${cloudOn() && authMode === 'login' ? '<button type="button" class="link-btn forgot" id="auForgot">שכחתי סיסמה</button>' : ''}
+        <button class="btn block" type="submit" id="auSubmit">${authMode === 'register' ? L('יצירת חשבון ✨', 'Create account ✨') : L('כניסה', 'Sign in')}</button>
+        ${cloudOn() && authMode === 'login' ? `<button type="button" class="link-btn forgot" id="auForgot">${L('שכחתי סיסמה', 'Forgot password')}</button>` : ''}
       </form>
-      ${cloudOn() ? `<div class="or"><span>או</span></div>
-      <button type="button" class="btn google block" id="auGoogle"><svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> המשך עם Google</button>` : ''}
+      ${cloudOn() ? `<div class="or"><span>${L('או', 'or')}</span></div>
+      <button type="button" class="btn google block" id="auGoogle"><svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> ${L('המשך עם Google', 'Continue with Google')}</button>` : ''}
     </div>
-    <p class="small muted">${cloudOn() ? '☁️ הנתונים מסונכרנים בענן, ואפשר לשתף אותם עם בן/בת הזוג.' : '🔒 החשבון והנתונים נשמרים במכשיר הזה בלבד, והסיסמה נשמרת מוצפנת.'}</p>
+    <p class="small muted">${cloudOn() ? L('☁️ הנתונים מסונכרנים בענן, ואפשר לשתף אותם עם בן/בת הזוג.', '☁️ Data is synced to the cloud and can be shared with your partner.') : L('🔒 החשבון והנתונים נשמרים במכשיר הזה בלבד, והסיסמה נשמרת מוצפנת.', '🔒 The account and data are stored on this device only, and the password is stored encrypted.')}</p>
   </div>`;
 }
 
 function bindAuth() {
   $$('[data-mode]').forEach((b) => b.onclick = () => { authMode = b.dataset.mode; render(); });
+  $('#auLang').onclick = () => setLang(IS_EN ? 'he' : 'en');
   $('#auEye').onclick = () => { const p = $('#auPass'); p.type = p.type === 'password' ? 'text' : 'password'; };
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -65,7 +67,7 @@ function bindAuth() {
       load(id);
       wizard = null;
       render();
-      if (state.onboarded) { celebrate('👋', `ברוכים השבים${state.parent?.name ? ', ' + state.parent.name : ''}!`); maybeNotify(); }
+      if (state.onboarded) { celebrate('👋', `${L('ברוכים השבים', 'Welcome back')}${state.parent?.name ? ', ' + state.parent.name : ''}!`); maybeNotify(); }
     } catch (ex) {
       err.textContent = ex.message;
       $('.auth-card').classList.remove('shake-x'); void $('.auth-card').offsetWidth; $('.auth-card').classList.add('shake-x');
@@ -76,8 +78,8 @@ function bindAuth() {
   });
   $('#auForgot')?.addEventListener('click', async () => {
     const email = $('#auEmail').value.trim();
-    if (!email) { $('#auErr').textContent = 'הקלידו את המייל שלכם ואז לחצו שוב על "שכחתי סיסמה"'; return; }
-    try { await Cloud.resetPassword(email); toast('שלחנו מייל לאיפוס הסיסמה 📧'); } catch (ex) { $('#auErr').textContent = ex.message; }
+    if (!email) { $('#auErr').textContent = L('הקלידו את המייל שלכם ואז לחצו שוב על "שכחתי סיסמה"', 'Type your email, then tap "Forgot password" again'); return; }
+    try { await Cloud.resetPassword(email); toast(L('שלחנו מייל לאיפוס הסיסמה 📧', 'We sent you a password reset email 📧')); } catch (ex) { $('#auErr').textContent = ex.message; }
   });
 }
 
@@ -87,7 +89,7 @@ const cloudOn = () => cloudPhase !== 'local';
 
 function loaderHTML(msg) {
   return `<div class="auth"><div class="auth-logo">🥄</div><h2 dir="ltr">Baby Bis</h2>
-    <p class="muted">${msg ? esc(msg) : 'רגע, מכינים הכל... ✨'}</p>${msg ? '' : '<div class="dots-loader"><i></i><i></i><i></i></div>'}</div>`;
+    <p class="muted">${msg ? esc(msg) : L('רגע, מכינים הכל... ✨', 'One moment, getting everything ready... ✨')}</p>${msg ? '' : '<div class="dots-loader"><i></i><i></i><i></i></div>'}</div>`;
 }
 
 // נתונים שנשמרו במכשיר הזה במצב מקומי, להעברה לענן
@@ -106,20 +108,20 @@ function familyChoiceHTML() {
   return `
   <div class="auth">
     <div class="auth-logo">💛</div>
-    <h2>כמעט סיימנו!</h2>
-    <p class="muted">איך מתחילים?</p>
+    <h2>${L('כמעט סיימנו!', 'Almost there!')}</h2>
+    <p class="muted">${L('איך מתחילים?', 'How would you like to start?')}</p>
     <div class="fam-choices">
-      ${local ? `<button class="fam-choice" data-fam="move"><span>📲</span><b>להעביר את ${esc(local.baby.name)} לענן</b><small>כל הטעימות שכבר רשמת במכשיר הזה יעברו לחשבון</small></button>` : ''}
-      <button class="fam-choice" data-fam="new"><span>✨</span><b>התחלה חדשה</b><small>שאלון קצר ומתחילים לעקוב</small></button>
-      <button class="fam-choice" data-fam="join"><span>👨‍👩‍👧</span><b>הצטרפות למשפחה קיימת</b><small>בן/בת הזוג כבר רשומים? הקלידו את קוד המשפחה</small></button>
+      ${local ? `<button class="fam-choice" data-fam="move"><span>📲</span><b>${L(`להעביר את ${esc(local.baby.name)} לענן`, `Move ${esc(local.baby.name)} to the cloud`)}</b><small>${L('כל הטעימות שכבר רשמת במכשיר הזה יעברו לחשבון', 'All tastes you already logged on this device move to the account')}</small></button>` : ''}
+      <button class="fam-choice" data-fam="new"><span>✨</span><b>${L('התחלה חדשה', 'Fresh start')}</b><small>${L('שאלון קצר ומתחילים לעקוב', 'A short questionnaire and you’re tracking')}</small></button>
+      <button class="fam-choice" data-fam="join"><span>👨‍👩‍👧</span><b>${L('הצטרפות למשפחה קיימת', 'Join an existing family')}</b><small>${L('בן/בת הזוג כבר רשומים? הקלידו את קוד המשפחה', 'Partner already signed up? Type the family code')}</small></button>
       <form class="card form join-form" id="joinForm" hidden>
-        <label for="joinCode">קוד המשפחה</label>
+        <label for="joinCode">${L('קוד המשפחה', 'Family code')}</label>
         <input type="text" id="joinCode" dir="ltr" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="ABC234" required>
         <div class="auth-err" id="joinErr" role="alert"></div>
-        <button class="btn block" type="submit">הצטרפות</button>
+        <button class="btn block" type="submit">${L('הצטרפות', 'Join')}</button>
       </form>
     </div>
-    <button class="link-btn" id="famLogout" style="margin-top:16px">התנתקות</button>
+    <button class="link-btn" id="famLogout" style="margin-top:16px">${L('התנתקות', 'Sign out')}</button>
   </div>`;
 }
 
@@ -134,14 +136,14 @@ function bindFamilyChoice() {
       if (kind === 'move') {
         const local = localDataOnDevice();
         await Cloud.createFamily(Object.assign({}, local, { onboarded: !!local.onboarded }));
-        toast('הנתונים הועברו לענן ☁️');
+        toast(L('הנתונים הועברו לענן ☁️', 'Your data moved to the cloud ☁️'));
       }
-    } catch (ex) { toast(ex.message || 'משהו השתבש, נסו שוב'); busy(false); }
+    } catch (ex) { toast(ex.message || L('משהו השתבש, נסו שוב', 'Something went wrong, try again')); busy(false); }
   });
   $('#joinForm').onsubmit = async (e) => {
     e.preventDefault();
     $('#joinErr').textContent = '';
-    try { await Cloud.joinFamily($('#joinCode').value); toast('הצטרפת למשפחה! 👨‍👩‍👧'); }
+    try { await Cloud.joinFamily($('#joinCode').value); toast(L('הצטרפת למשפחה! 👨‍👩‍👧', 'You joined the family! 👨‍👩‍👧')); }
     catch (ex) { $('#joinErr').textContent = ex.message; }
   };
   $('#famLogout').onclick = () => Cloud.logout();
@@ -149,10 +151,10 @@ function bindFamilyChoice() {
 
 /* ===================== שאלון פתיחה ===================== */
 const EXPOSURE_OPTS = [
-  { id: 'none', t: 'עוד לא' },
-  { id: 'tried', t: 'טעם·ה' },
-  { id: 'regular', t: 'אוכל·ת קבוע' },
-  { id: 'reaction', t: 'הייתה תגובה' },
+  { id: 'none', t: L('עוד לא', 'Not yet') },
+  { id: 'tried', t: L('טעם·ה', 'Tried') },
+  { id: 'regular', t: L('אוכל·ת קבוע', 'Eats regularly') },
+  { id: 'reaction', t: L('הייתה תגובה', 'Had a reaction') },
 ];
 
 let wizard = null;
@@ -205,7 +207,7 @@ function renderWizard() {
   $('#view').innerHTML = `
   <div class="wizard">
     <div class="wz-top">
-      ${w.i > 0 && step !== 'done' ? '<button class="wz-back" id="wzBack" aria-label="חזרה">→</button>' : w.addKid && step !== 'done' ? '<button class="wz-back" id="wzCancel" aria-label="ביטול">✕</button>' : '<span></span>'}
+      ${w.i > 0 && step !== 'done' ? `<button class="wz-back" id="wzBack" aria-label="${L('חזרה', 'Back')}">${BACK}</button>` : w.addKid && step !== 'done' ? `<button class="wz-back" id="wzCancel" aria-label="${L('ביטול', 'Cancel')}">✕</button>` : '<span></span>'}
       <div class="wz-dots">${dots}</div>
       <span></span>
     </div>
@@ -221,13 +223,13 @@ function nextStep() { wizard.i++; wizard.dir = 1; renderWizard(); }
 function stepParent() {
   return `
     <span class="wz-emoji anim-jelly">💛</span>
-    <h2>נעים להכיר!</h2>
-    <p class="muted">כמה שאלות קצרות, ונתאים את האפליקציה בדיוק בשבילכם.</p>
+    <h2>${L('נעים להכיר!', 'Nice to meet you!')}</h2>
+    <p class="muted">${L('כמה שאלות קצרות, ונתאים את האפליקציה בדיוק בשבילכם.', 'A few quick questions so we can tailor the app just for you.')}</p>
     <form class="form card" id="wzForm">
-      <label for="wzParent">איך קוראים לך? (שם האמא)</label>
-      <input type="text" id="wzParent" required maxlength="30" value="${esc(wizard.parent)}" placeholder="למשל: מיכל" autocomplete="given-name">
+      <label for="wzParent">${L('איך קוראים לך? (שם האמא)', 'What’s your name?')}</label>
+      <input type="text" id="wzParent" required maxlength="30" value="${esc(wizard.parent)}" placeholder="${L('למשל: מיכל', 'e.g. Emma')}" autocomplete="given-name">
       <div style="height:16px"></div>
-      <button class="btn block" type="submit">המשך ←</button>
+      <button class="btn block" type="submit">${L('המשך', 'Continue')} ${FWD}</button>
     </form>`;
 }
 function bindParent() {
@@ -238,26 +240,26 @@ function bindParent() {
 function stepBaby() {
   return `
     <span class="wz-emoji anim-bounce">👶</span>
-    <h2>בואי נכיר את הקטנטנים</h2>
+    <h2>${L('בואי נכיר את הקטנטנים', 'Let’s meet your little one')}</h2>
     <form class="form card" id="wzForm">
-      <label for="wzBaby">איך קוראים לתינוק?</label>
-      <input type="text" id="wzBaby" required maxlength="30" value="${esc(wizard.babyName)}" placeholder="למשל: נועם">
-      <label>בן או בת? <span class="muted small">(כדי שנדבר נכון)</span></label>
+      <label for="wzBaby">${L('איך קוראים לתינוק?', 'Baby’s name?')}</label>
+      <input type="text" id="wzBaby" required maxlength="30" value="${esc(wizard.babyName)}" placeholder="${L('למשל: נועם', 'e.g. Noah')}">
+      <label>${L('בן או בת?', 'Boy or girl?')} <span class="muted small">(${L('כדי שנדבר נכון', 'optional')})</span></label>
       <div class="choice-row gender" data-group="gender">
-        <button type="button" class="choice ${wizard.gender === 'm' ? 'on' : ''}" data-val="m"><span class="ce">💙</span>בן</button>
-        <button type="button" class="choice ${wizard.gender === 'f' ? 'on' : ''}" data-val="f"><span class="ce">💗</span>בת</button>
+        <button type="button" class="choice ${wizard.gender === 'm' ? 'on' : ''}" data-val="m"><span class="ce">💙</span>${L('בן', 'Boy')}</button>
+        <button type="button" class="choice ${wizard.gender === 'f' ? 'on' : ''}" data-val="f"><span class="ce">💗</span>${L('בת', 'Girl')}</button>
       </div>
-      <label for="wzBirth">תאריך לידה</label>
+      <label for="wzBirth">${L('תאריך לידה', 'Date of birth')}</label>
       <input type="date" id="wzBirth" required max="${new Date().toISOString().slice(0, 10)}" value="${esc(wizard.birth)}">
       <div class="wz-age" id="wzAge"></div>
       <div style="height:12px"></div>
-      <button class="btn block" type="submit">המשך ←</button>
+      <button class="btn block" type="submit">${L('המשך', 'Continue')} ${FWD}</button>
     </form>`;
 }
 function bindBaby() {
   const upd = () => {
     const b = $('#wzBirth').value;
-    $('#wzAge').innerHTML = b && ageText(b) ? `🎂 גיל: <b>${ageText(b)}</b>` : '';
+    $('#wzAge').innerHTML = b && ageText(b) ? `🎂 ${L('גיל', 'Age')}: <b>${ageText(b)}</b>` : '';
   };
   $('#wzBirth').oninput = upd; upd();
   $('[data-group="gender"]').onclick = (e) => {
@@ -277,11 +279,11 @@ function bindBaby() {
 
 function stepAvatar() {
   return `
-    <h2>האווטאר של ${esc(wizard.babyName)} ✨</h2>
-    <p class="muted">העלו תמונה של ${esc(wizard.babyName)}, או בחרו דמות חמודה.</p>
+    <h2>${L(`האווטאר של ${esc(wizard.babyName)}`, `${esc(wizard.babyName)}’s avatar`)} ✨</h2>
+    <p class="muted">${L(`העלו תמונה של ${esc(wizard.babyName)}, או בחרו דמות חמודה.`, `Upload a photo of ${esc(wizard.babyName)}, or pick a cute character.`)}</p>
     <div id="avEditor"></div>
-    <button class="btn block" id="wzNext" style="margin-top:14px">המשך ←</button>
-    <button class="btn ghost block" id="wzSkip" style="margin-top:8px">אולי אחר כך</button>`;
+    <button class="btn block" id="wzNext" style="margin-top:14px">${L('המשך', 'Continue')} ${FWD}</button>
+    <button class="btn ghost block" id="wzSkip" style="margin-top:8px">${L('אולי אחר כך', 'Maybe later')}</button>`;
 }
 function bindAvatarStep() {
   const ed = mountAvatarEditor($('#avEditor'), wizard.avatar, (av) => { wizard.avatar = av; });
@@ -293,22 +295,22 @@ function stepAllergens() {
   const age = wizard.birth ? (Date.now() - new Date(wizard.birth)) / (30.44 * DAY) : 6;
   return `
     <span class="wz-emoji anim-pulse">⭐</span>
-    <h2>${G(`למה ${esc(wizard.babyName)} כבר נחשף·ה?`)}</h2>
-    <p class="muted">כך לא תצטרכו להזין הכל מההתחלה. אפשר לשנות בכל רגע.</p>
-    ${age < 4 ? `<div class="card small">👶 ${G(`${esc(wizard.babyName)} עוד צעיר·ה למוצקים, אפשר פשוט לדלג.`)}</div>` : ''}
+    <h2>${L(G(`למה ${esc(wizard.babyName)} כבר נחשף·ה?`), `What has ${esc(wizard.babyName)} been exposed to?`)}</h2>
+    <p class="muted">${L('כך לא תצטרכו להזין הכל מההתחלה. אפשר לשנות בכל רגע.', 'So you won’t have to enter everything from scratch. You can change it anytime.')}</p>
+    ${age < 4 ? `<div class="card small">👶 ${L(G(`${esc(wizard.babyName)} עוד צעיר·ה למוצקים, אפשר פשוט לדלג.`), `${esc(wizard.babyName)} is still young for solids – feel free to skip.`)}</div>` : ''}
     <div class="exp-list">
       ${activeAllergens().map((k) => [k, ALLERGENS[k]]).map(([k, a]) => `
-        ${nutHeader(activeAllergens(), k, '<h3 class="section-title" style="margin:8px 0 0">🌰 אגוזים <span class="small muted" style="font-weight:400">– כל אחד בנפרד</span></h3>')}
+        ${nutHeader(activeAllergens(), k, `<h3 class="section-title" style="margin:8px 0 0">🌰 ${L('אגוזים', 'Nuts')} <span class="small muted" style="font-weight:400">– ${L('כל אחד בנפרד', 'each one separately')}</span></h3>`)}
         <div class="exp-row card">
           <div class="exp-name"><span class="anim-float" style="display:inline-block">${allergenIcon(k)}</span> ${a.name}
-            ${k === 'milk' ? '<small class="muted">(גם תמ״ל רגיל נחשב)</small>' : ''}${k === 'peanut' ? '<small class="muted">(כולל במבה)</small>' : ''}</div>
+            ${k === 'milk' ? `<small class="muted">(${L('גם תמ״ל רגיל נחשב', 'regular formula counts too')})</small>` : ''}${k === 'peanut' ? `<small class="muted">(${L('כולל במבה', 'incl. Bamba / peanut puffs')})</small>` : ''}</div>
           <div class="exp-opts" data-al="${k}">
             ${EXPOSURE_OPTS.map((o) => `<button type="button" class="exp-opt ${(wizard.exposures[k] || 'none') === o.id ? 'on' : ''} o-${o.id}" data-v="${o.id}">${G(o.t)}</button>`).join('')}
           </div>
         </div>`).join('')}
     </div>
-    <button class="btn block" id="wzNext" style="margin-top:14px">המשך ←</button>
-    <button class="btn ghost block" id="wzSkip" style="margin-top:8px">עוד לא התחלנו מוצקים ⏭️</button>`;
+    <button class="btn block" id="wzNext" style="margin-top:14px">${L('המשך', 'Continue')} ${FWD}</button>
+    <button class="btn ghost block" id="wzSkip" style="margin-top:8px">${L('עוד לא התחלנו מוצקים ⏭️', 'We haven’t started solids yet ⏭️')}</button>`;
 }
 function bindAllergens() {
   $$('.exp-opts').forEach((row) => row.addEventListener('click', (e) => {
@@ -324,19 +326,19 @@ function stepFoods() {
   const cats = CATEGORIES.filter((c) => !['allergen', 'custom'].includes(c.id));
   return `
     <span class="wz-emoji anim-wiggle">🥕</span>
-    <h2>${G(`ומה ${esc(wizard.babyName)} כבר טעמ·ה?`)}</h2>
-    <p class="muted">סמנו את מה שכבר טעם. לא חייבים לזכור הכל 🙂</p>
+    <h2>${L(G(`ומה ${esc(wizard.babyName)} כבר טעמ·ה?`), `And what has ${esc(wizard.babyName)} already tasted?`)}</h2>
+    <p class="muted">${L('סמנו את מה שכבר טעם. לא חייבים לזכור הכל 🙂', 'Tick what they’ve tasted. No need to remember everything 🙂')}</p>
     <div class="wz-count" id="wzCount"></div>
     ${cats.map((c) => {
       const foods = FOODS.filter((f) => f.cat === c.id && !f.allergen);
       if (!foods.length) return '';
-      return `<div class="wz-cat"><div class="wz-cat-head"><b>${c.emoji} ${c.name}</b><button type="button" class="link-btn" data-all="${c.id}">סמנו הכל</button></div>
+      return `<div class="wz-cat"><div class="wz-cat-head"><b>${c.emoji} ${c.name}</b><button type="button" class="link-btn" data-all="${c.id}">${L('סמנו הכל', 'Select all')}</button></div>
         <div class="pick-grid">${foods.map((f) => `<button type="button" class="pick ${wizard.foods.has(f.id) ? 'on' : ''}" data-f="${f.id}"><span class="anim-${f.anim}">${foodIcon(f)}</span>${esc(f.name)}</button>`).join('')}</div></div>`;
     }).join('')}
-    <div class="wz-sticky"><button class="btn block" id="wzNext">סיימתי ←</button></div>`;
+    <div class="wz-sticky"><button class="btn block" id="wzNext">${L('סיימתי', 'Done')} ${FWD}</button></div>`;
 }
 function bindFoods() {
-  const count = () => { $('#wzCount').textContent = wizard.foods.size ? `✓ ${wizard.foods.size} מוצרים נבחרו` : ''; };
+  const count = () => { $('#wzCount').textContent = wizard.foods.size ? L(`✓ ${wizard.foods.size} מוצרים נבחרו`, `✓ ${wizard.foods.size} foods selected`) : ''; };
   count();
   $('#view').querySelectorAll('.pick').forEach((b) => b.onclick = () => {
     const id = b.dataset.f;
@@ -359,10 +361,10 @@ function stepDone() {
   return `
     <div class="wz-done">
       <div class="wz-av">${avatarHTML(150, wizard.avatar)}</div>
-      <h2>הכל מוכן, ${esc(wizard.parent)}! 🎉</h2>
-      <p class="muted">${al || wizard.foods.size ? `רשמנו ${wizard.foods.size} מוצרים ו-${al} אלרגנים שכבר מוכרים ל${esc(wizard.babyName)}.` : `מתחילים את המסע של ${esc(wizard.babyName)} מאפס – איזה כיף!`}</p>
-      <button class="btn block" id="wzFinish">יאללה, נכנסים! 🥄</button>
-      <p class="small muted" style="margin-top:14px">⚕️ האפליקציה היא כלי מעקב ומידע כללי, ואינה תחליף לייעוץ רפואי.</p>
+      <h2>${L('הכל מוכן', 'All set')}, ${esc(wizard.parent)}! 🎉</h2>
+      <p class="muted">${al || wizard.foods.size ? L(`רשמנו ${wizard.foods.size} מוצרים ו-${al} אלרגנים שכבר מוכרים ל${esc(wizard.babyName)}.`, `We logged ${wizard.foods.size} foods and ${al} allergens ${esc(wizard.babyName)} already knows.`) : L(`מתחילים את המסע של ${esc(wizard.babyName)} מאפס – איזה כיף!`, `Starting ${esc(wizard.babyName)}’s journey from scratch – how exciting!`)}</p>
+      <button class="btn block" id="wzFinish">${L('יאללה, נכנסים! 🥄', 'Let’s go! 🥄')}</button>
+      <p class="small muted" style="margin-top:14px">${L('⚕️ האפליקציה היא כלי מעקב ומידע כללי, ואינה תחליף לייעוץ רפואי.', '⚕️ This app is a tracking tool with general information and is not a substitute for medical advice.')}</p>
     </div>`;
 }
 function bindDone() {
@@ -378,7 +380,7 @@ function bindDone() {
     wizard = null;
     tab = 'home';
     render();
-    celebrate('🎉', w.addKid ? `${state.baby.name} הצטרף/ה למשפחה!` : `ברוכים הבאים, ${state.baby.name}!`);
+    celebrate('🎉', w.addKid ? L(`${state.baby.name} הצטרף/ה למשפחה!`, `${state.baby.name} joined the family!`) : L(`ברוכים הבאים, ${state.baby.name}!`, `Welcome, ${state.baby.name}!`));
   };
 }
 
@@ -412,18 +414,18 @@ function mountAvatarEditor(root, initial, onChange) {
         <span class="av-sticker big" id="avSticker">${ed.sticker}</span>
         <div class="av-processing" id="avBusy" hidden>✨</div>
       </div>
-      <label class="btn accent upload-btn">📷 ${ed.dataUrl ? 'החלפת תמונה' : 'העלאת תמונה'}<input type="file" id="avFile" accept="image/*" hidden></label>
-      ${ed.dataUrl ? '<button type="button" class="link-btn" id="avRemove" style="display:block;margin:8px auto 0">🗑️ הסרת התמונה</button>' : ''}
+      <label class="btn accent upload-btn">📷 ${ed.dataUrl ? L('החלפת תמונה', 'Change photo') : L('העלאת תמונה', 'Upload photo')}<input type="file" id="avFile" accept="image/*" hidden></label>
+      ${ed.dataUrl ? `<button type="button" class="link-btn" id="avRemove" style="display:block;margin:8px auto 0">🗑️ ${L('הסרת התמונה', 'Remove photo')}</button>` : ''}
       <div id="avPhotoCtl" hidden>
-        <div class="small muted" style="text-align:center;margin:8px 0">גררו את התמונה כדי למרכז את הפנים</div>
+        <div class="small muted" style="text-align:center;margin:8px 0">${L('גררו את התמונה כדי למרכז את הפנים', 'Drag the photo to center the face')}</div>
         <label class="zoom-row">🔍<input type="range" id="avZoom" min="1" max="3" step="0.05" value="1"></label>
       </div>
       <div id="avEmojiCtl" ${ed.dataUrl ? 'hidden' : ''}>
-        <div class="small muted" style="margin:10px 0 6px">או בחרו דמות:</div>
+        <div class="small muted" style="margin:10px 0 6px">${L('או בחרו דמות:', 'Or pick a character:')}</div>
         <div class="emoji-pick">${EMOJI_AVATARS.map((e) => `<button type="button" class="${e === ed.emoji ? 'on' : ''}" data-emoji="${e}">${e}</button>`).join('')}</div>
       </div>
-      <div class="small muted" style="margin:12px 0 6px">מסגרת וקישוט:</div>
-      <div class="frame-pick">${FRAMES.map((c) => `<button type="button" class="${c === ed.frame ? 'on' : ''}" data-frame="${c}" style="background:${c}" aria-label="צבע מסגרת"></button>`).join('')}</div>
+      <div class="small muted" style="margin:12px 0 6px">${L('מסגרת וקישוט:', 'Frame & sticker:')}</div>
+      <div class="frame-pick">${FRAMES.map((c) => `<button type="button" class="${c === ed.frame ? 'on' : ''}" data-frame="${c}" style="background:${c}" aria-label="${L('צבע מסגרת', 'Frame color')}"></button>`).join('')}</div>
       <div class="sticker-pick">${STICKERS.map((s) => `<button type="button" class="${s === ed.sticker ? 'on' : ''}" data-sticker="${s}">${s || '✕'}</button>`).join('')}</div>
     </div>`;
 
@@ -461,7 +463,7 @@ function mountAvatarEditor(root, initial, onChange) {
       $('.av-placeholder', root).hidden = true;
       $('#avPhotoCtl', root).hidden = false;
       $('#avEmojiCtl', root).hidden = true;
-      $('.upload-btn', root).firstChild.textContent = '📷 החלפת תמונה';
+      $('.upload-btn', root).firstChild.textContent = L('📷 החלפת תמונה', '📷 Change photo');
       draw();
       stage.classList.remove('reveal'); void stage.offsetWidth; stage.classList.add('reveal');
     } catch (ex) { toast(ex.message); }
@@ -520,15 +522,15 @@ function mountAvatarEditor(root, initial, onChange) {
 function openAvatarModal() {
   let current = state.avatar;
   openModal(`
-    <h2 style="margin-bottom:10px">✨ האווטאר של ${esc(babyName())}</h2>
+    <h2 style="margin-bottom:10px">✨ ${L(`האווטאר של ${esc(babyName())}`, `${esc(babyName())}’s avatar`)}</h2>
     <div id="avEditor"></div>
-    <button class="btn block" id="avSave" style="margin-top:14px">שמירה</button>
+    <button class="btn block" id="avSave" style="margin-top:14px">${L('שמירה', 'Save')}</button>
   `, (b) => {
     const ed = mountAvatarEditor($('#avEditor', b), state.avatar, (v) => { current = v; });
     $('#avSave', b).onclick = () => {
       state.avatar = ed.value() || current;
       save(); closeModal(); render();
-      celebrate('✨', 'אווטאר חדש!');
+      celebrate('✨', L('אווטאר חדש!', 'New avatar!'));
     };
   });
 }

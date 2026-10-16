@@ -14,7 +14,7 @@ const Auth = (() => {
   const norm = (email) => email.trim().toLowerCase();
 
   async function hash(password, salt) {
-    if (!crypto?.subtle) throw new Error('הדפדפן לא תומך בהצפנה. יש לפתוח את האפליקציה בכתובת מאובטחת (https).');
+    if (!crypto?.subtle) throw new Error(L('הדפדפן לא תומך בהצפנה. יש לפתוח את האפליקציה בכתובת מאובטחת (https).', 'This browser doesn’t support encryption. Open the app over a secure address (https).'));
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
     const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, key, 256);
     return b64(bits);
@@ -24,10 +24,10 @@ const Auth = (() => {
 
   async function register(email, password) {
     const e = norm(email);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error('כתובת המייל לא תקינה');
-    if (password.length < 6) throw new Error('הסיסמה צריכה להכיל לפחות 6 תווים');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error(L('כתובת המייל לא תקינה', 'Invalid email address'));
+    if (password.length < 6) throw new Error(L('הסיסמה צריכה להכיל לפחות 6 תווים', 'Password must be at least 6 characters'));
     const all = accounts();
-    if (all[e]) throw new Error('כבר קיים חשבון עם המייל הזה – נסו להתחבר');
+    if (all[e]) throw new Error(L('כבר קיים חשבון עם המייל הזה – נסו להתחבר', 'An account with this email already exists – try signing in'));
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const id = 'u_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const isFirst = !Object.keys(all).length;
@@ -42,8 +42,8 @@ const Auth = (() => {
 
   async function login(email, password) {
     const acc = accounts()[norm(email)];
-    if (!acc) throw new Error('לא נמצא חשבון עם המייל הזה');
-    if (await hash(password, unb64(acc.salt)) !== acc.hash) throw new Error('הסיסמה שגויה');
+    if (!acc) throw new Error(L('לא נמצא חשבון עם המייל הזה', 'No account found with this email'));
+    if (await hash(password, unb64(acc.salt)) !== acc.hash) throw new Error(L('הסיסמה שגויה', 'Wrong password'));
     localStorage.setItem(SESSION_KEY, acc.id);
     return acc.id;
   }
@@ -73,13 +73,13 @@ const Avatar = (() => {
   const SIZE = 256;
 
   async function loadImage(file) {
-    if (!file || !file.type.startsWith('image/')) throw new Error('יש לבחור קובץ תמונה');
+    if (!file || !file.type.startsWith('image/')) throw new Error(L('יש לבחור קובץ תמונה', 'Please choose an image file'));
     try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
     catch {
       return new Promise((res, rej) => {
         const img = new Image();
         img.onload = () => res(img);
-        img.onerror = () => rej(new Error('לא הצלחנו לקרוא את התמונה'));
+        img.onerror = () => rej(new Error(L('לא הצלחנו לקרוא את התמונה', 'Couldn’t read the image')));
         img.src = URL.createObjectURL(file);
       });
     }

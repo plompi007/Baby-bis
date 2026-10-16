@@ -3,21 +3,21 @@
 
 /* ===================== מרקמים ===================== */
 const TEXTURES = [
-  { id: 'puree',  e: '🥣', t: 'פירה חלק' },
-  { id: 'mashed', e: '🍴', t: 'מרוסק' },
-  { id: 'lumpy',  e: '🧆', t: 'גושים רכים' },
-  { id: 'finger', e: '✋', t: 'אוכל אצבעות' },
-  { id: 'family', e: '🍽️', t: 'משפחתי' },
+  { id: 'puree',  e: '🥣', t: L('פירה חלק', 'Smooth purée') },
+  { id: 'mashed', e: '🍴', t: L('מרוסק', 'Mashed') },
+  { id: 'lumpy',  e: '🧆', t: L('גושים רכים', 'Soft lumps') },
+  { id: 'finger', e: '✋', t: L('אוכל אצבעות', 'Finger food') },
+  { id: 'family', e: '🍽️', t: L('משפחתי', 'Family food') },
 ];
 const RECIPE_TEXTURE = { puree: 'puree', mash: 'mashed', finger: 'finger' };
 const lastTexture = () => kidLogs().filter((l) => l.texture).sort((a, b) => b.ts - a.ts)[0]?.texture;
 
 // מה מומלץ בכל גיל (על פי המלצות להתקדמות הדרגתית במרקמים)
 function textureAdvice(age) {
-  if (age === null || age < 6) return { ids: ['puree', 'mashed'], text: 'בהתחלה: פירה חלק או מרוסק, ואפשר כבר רצועות רכות מאוד.' };
-  if (age < 8) return { ids: ['mashed', 'lumpy', 'finger'], text: 'גיל 6–8 חודשים: מעבר למרוסק ולגושים רכים, ואוכל אצבעות רך שנמעך בקלות.' };
-  if (age < 10) return { ids: ['lumpy', 'finger'], text: 'גיל 8–10 חודשים: גושים, קצוץ ואוכל אצבעות. זה הזמן לתרגל לעיסה.' };
-  return { ids: ['finger', 'family'], text: 'מגיל 10 חודשים: אוכל משפחתי קצוץ ואוכל אצבעות, כמעט כמו כולם.' };
+  if (age === null || age < 6) return { ids: ['puree', 'mashed'], text: L('בהתחלה: פירה חלק או מרוסק, ואפשר כבר רצועות רכות מאוד.', 'At the start: smooth purée or mashed – very soft strips are fine too.') };
+  if (age < 8) return { ids: ['mashed', 'lumpy', 'finger'], text: L('גיל 6–8 חודשים: מעבר למרוסק ולגושים רכים, ואוכל אצבעות רך שנמעך בקלות.', '6–8 months: move to mashed and soft lumps, plus soft finger foods that squish easily.') };
+  if (age < 10) return { ids: ['lumpy', 'finger'], text: L('גיל 8–10 חודשים: גושים, קצוץ ואוכל אצבעות. זה הזמן לתרגל לעיסה.', '8–10 months: lumps, chopped food and finger foods. Time to practice chewing.') };
+  return { ids: ['finger', 'family'], text: L('מגיל 10 חודשים: אוכל משפחתי קצוץ ואוכל אצבעות, כמעט כמו כולם.', 'From 10 months: chopped family food and finger foods – almost like everyone else.') };
 }
 
 function textureCardHTML() {
@@ -29,13 +29,13 @@ function textureCardHTML() {
   const smoothOnly = recent.length >= 5 && recent.every((l) => l.texture === 'puree');
   return `
   <section class="card">
-    <div class="card-head"><h3>🥄 מרקמים ב-3 השבועות האחרונים</h3></div>
+    <div class="card-head"><h3>🥄 ${L('מרקמים ב-3 השבועות האחרונים', 'Textures in the last 3 weeks')}</h3></div>
     <div class="tex-bars">
       ${TEXTURES.map((t) => `<div class="tex ${adv.ids.includes(t.id) ? 'rec' : ''}"><i style="height:${Math.round(counts[t.id] / max * 100)}%"></i><b>${counts[t.id] || ''}</b><span>${t.e}</span><small>${t.t}</small></div>`).join('')}
     </div>
-    <p class="small"><b>מומלץ עכשיו:</b> ${adv.text}</p>
-    ${smoothOnly && age >= 8 ? `<div class="warn-banner small">💡 כמעט רק פירה חלק. מחקרים מראים שמעבר למרקמים גסים יותר עד גיל 9–10 חודשים עוזר ללעיסה ומפחית בררנות בהמשך. נסו להשאיר קצת גושים.</div>` : ''}
-    ${!recent.length ? '<p class="small muted">כשרושמים טעימה אפשר לבחור מרקם, והגרף יתמלא.</p>' : ''}
+    <p class="small"><b>${L('מומלץ עכשיו', 'Recommended now')}:</b> ${adv.text}</p>
+    ${smoothOnly && age >= 8 ? `<div class="warn-banner small">💡 ${L('כמעט רק פירה חלק. מחקרים מראים שמעבר למרקמים גסים יותר עד גיל 9–10 חודשים עוזר ללעיסה ומפחית בררנות בהמשך. נסו להשאיר קצת גושים.', 'Almost only smooth purée. Research shows that moving to coarser textures by 9–10 months helps chewing and reduces picky eating later. Try leaving some lumps.')}</div>` : ''}
+    ${!recent.length ? `<p class="small muted">${L('כשרושמים טעימה אפשר לבחור מרקם, והגרף יתמלא.', 'Choose a texture when logging a taste and the chart will fill up.')}</p>` : ''}
   </section>`;
 }
 
@@ -53,7 +53,7 @@ function hueBucket(hex) {
   if (h < 170) return 'green';
   return 'purple';
 }
-const RAINBOW = { red: '❤️ אדום', orange: '🧡 כתום-צהוב', green: '💚 ירוק', purple: '💜 סגול', white: '🤍 לבן' };
+const RAINBOW = IS_EN ? { red: '❤️ Red', orange: '🧡 Orange-yellow', green: '💚 Green', purple: '💜 Purple', white: '🤍 White' } : { red: '❤️ אדום', orange: '🧡 כתום-צהוב', green: '💚 ירוק', purple: '💜 סגול', white: '🤍 לבן' };
 const BITTER_GREENS = ['broccoli', 'spinach', 'kale', 'chard', 'cabbage', 'asparagus', 'greenbean', 'zucchini'];
 const MAIN_ALLERGENS = ['peanut', 'sesame', 'egg', 'milk', 'wheat'];
 
@@ -78,27 +78,27 @@ function badgeContext() {
 }
 
 const BADGES = [
-  { id: 'first', e: '🥄', t: 'ביס ראשון', d: 'הטעימה הראשונה נרשמה', test: (c) => c.logs.length >= 1 },
-  { id: 'f10', e: '🌱', t: '10 טעמים', d: '10 מוצרים שונים', test: (c) => c.foods.size >= 10 },
-  { id: 'f25', e: '🌿', t: '25 טעמים', d: '25 מוצרים שונים', test: (c) => c.foods.size >= 25 },
-  { id: 'f50', e: '🌳', t: '50 טעמים', d: '50 מוצרים שונים', test: (c) => c.foods.size >= 50 },
-  { id: 'f100', e: '🏆', t: '100 טעמים', d: '100 מוצרים שונים!', test: (c) => c.foods.size >= 100 },
-  { id: 'veg10', e: '🥦', t: 'חובב·ת ירקות', d: '10 ירקות שונים', test: (c) => c.byCat('veg') >= 10 },
-  { id: 'fruit10', e: '🍓', t: 'מלכ·ת הפירות', d: '10 פירות שונים', test: (c) => c.byCat('fruit') >= 10 },
-  { id: 'greens', e: '💪', t: 'אמיצ·ה בירוק', d: '3 ירקות ירוקים ומרים', test: (c) => BITTER_GREENS.filter((id) => c.foods.has(id)).length >= 3 },
-  { id: 'rainbow', e: '🌈', t: 'קשת בענן', d: 'ירקות ופירות בכל 5 צבעי הקשת', test: (c) => c.colors.size >= 5 },
-  { id: 'spices', e: '🌶️', t: 'חובב·ת טעמים', d: '5 תבלינים ועשבי תיבול', test: (c) => c.byCat('herbs') >= 5 },
-  { id: 'fish', e: '🐟', t: 'דג במים', d: 'טעם·ה דג לראשונה', test: (c) => [...c.foods].some((id) => foodById(id)?.allergen === 'fish') },
-  { id: 'allergen1', e: '⭐', t: 'אלרגן ראשון', d: 'הוכר אלרגן ראשון', test: (c) => activeAllergens().some(c.introduced) },
-  { id: 'main5', e: '🛡️', t: 'מגן האלרגנים', d: 'בוטנים, שומשום, ביצה, חלב וחיטה הוכרו', test: (c) => MAIN_ALLERGENS.every(c.introduced) },
-  { id: 'allAll', e: '👑', t: 'אלופ·ת האלרגנים', d: 'כל האלרגנים הפעילים הוכרו', test: (c) => activeAllergens().every(c.introduced) },
-  { id: 'peanutWeek', e: '🥜', t: 'שבוע בוטנים מושלם', d: '3 חשיפות לבוטנים בשבוע', test: () => allergenInfo('peanut').weekCount >= 3 },
-  { id: 'streak3', e: '🔥', t: '3 ימים ברצף', d: 'רישום טעימות 3 ימים ברצף', test: (c) => c.streak >= 3 },
-  { id: 'streak7', e: '🔥', t: 'שבוע ברצף', d: 'רישום טעימות 7 ימים ברצף', test: (c) => c.streak >= 7 },
-  { id: 'patience', e: '🔁', t: 'סבלנות משתלמת', d: 'אותו מוצר 10 פעמים', test: (c) => Object.values(c.counts).some((n) => n >= EXPOSURE_GOAL) },
-  { id: 'changed', e: '😍', t: 'שינוי טעם', d: 'מה שלא אהב·ה – עכשיו אוהב·ת!', test: (c) => c.changed },
-  { id: 'finger', e: '✋', t: 'אוכל·ת לבד', d: 'אוכל אצבעות ראשון', test: (c) => c.logs.some((l) => ['finger', 'family'].includes(l.texture)) },
-  { id: 'chef', e: '👩‍🍳', t: 'שף·ית קטנ·ה', d: '5 ארוחות ממתכונים', test: (c) => new Set(c.logs.filter((l) => (l.notes || '').startsWith('מתוך:')).map((l) => startOfDay(l.ts) + l.notes)).size >= 5 },
+  { id: 'first', e: '🥄', t: L('ביס ראשון', 'First bite'), d: L('הטעימה הראשונה נרשמה', 'The first taste was logged'), test: (c) => c.logs.length >= 1 },
+  { id: 'f10', e: '🌱', t: L('10 טעמים', '10 flavors'), d: L('10 מוצרים שונים', '10 different foods'), test: (c) => c.foods.size >= 10 },
+  { id: 'f25', e: '🌿', t: L('25 טעמים', '25 flavors'), d: L('25 מוצרים שונים', '25 different foods'), test: (c) => c.foods.size >= 25 },
+  { id: 'f50', e: '🌳', t: L('50 טעמים', '50 flavors'), d: L('50 מוצרים שונים', '50 different foods'), test: (c) => c.foods.size >= 50 },
+  { id: 'f100', e: '🏆', t: L('100 טעמים', '100 flavors'), d: L('100 מוצרים שונים!', '100 different foods!'), test: (c) => c.foods.size >= 100 },
+  { id: 'veg10', e: '🥦', t: L('חובב·ת ירקות', 'Veggie lover'), d: L('10 ירקות שונים', '10 different vegetables'), test: (c) => c.byCat('veg') >= 10 },
+  { id: 'fruit10', e: '🍓', t: L('מלכ·ת הפירות', 'Fruit royalty'), d: L('10 פירות שונים', '10 different fruits'), test: (c) => c.byCat('fruit') >= 10 },
+  { id: 'greens', e: '💪', t: L('אמיצ·ה בירוק', 'Brave with greens'), d: L('3 ירקות ירוקים ומרים', '3 bitter green vegetables'), test: (c) => BITTER_GREENS.filter((id) => c.foods.has(id)).length >= 3 },
+  { id: 'rainbow', e: '🌈', t: L('קשת בענן', 'Rainbow'), d: L('ירקות ופירות בכל 5 צבעי הקשת', 'Fruit and veg in all 5 rainbow colors'), test: (c) => c.colors.size >= 5 },
+  { id: 'spices', e: '🌶️', t: L('חובב·ת טעמים', 'Flavor fan'), d: L('5 תבלינים ועשבי תיבול', '5 spices and herbs'), test: (c) => c.byCat('herbs') >= 5 },
+  { id: 'fish', e: '🐟', t: L('דג במים', 'Fish in water'), d: L('טעם·ה דג לראשונה', 'First taste of fish'), test: (c) => [...c.foods].some((id) => foodById(id)?.allergen === 'fish') },
+  { id: 'allergen1', e: '⭐', t: L('אלרגן ראשון', 'First allergen'), d: L('הוכר אלרגן ראשון', 'First allergen introduced'), test: (c) => activeAllergens().some(c.introduced) },
+  { id: 'main5', e: '🛡️', t: L('מגן האלרגנים', 'Allergen shield'), d: L('בוטנים, שומשום, ביצה, חלב וחיטה הוכרו', 'Peanut, sesame, egg, milk and wheat introduced'), test: (c) => MAIN_ALLERGENS.every(c.introduced) },
+  { id: 'allAll', e: '👑', t: L('אלופ·ת האלרגנים', 'Allergen champion'), d: L('כל האלרגנים הפעילים הוכרו', 'All active allergens introduced'), test: (c) => activeAllergens().every(c.introduced) },
+  { id: 'peanutWeek', e: '🥜', t: L('שבוע בוטנים מושלם', 'Perfect peanut week'), d: L('3 חשיפות לבוטנים בשבוע', '3 peanut exposures in a week'), test: () => allergenInfo('peanut').weekCount >= 3 },
+  { id: 'streak3', e: '🔥', t: L('3 ימים ברצף', '3-day streak'), d: L('רישום טעימות 3 ימים ברצף', 'Tastes logged 3 days in a row'), test: (c) => c.streak >= 3 },
+  { id: 'streak7', e: '🔥', t: L('שבוע ברצף', 'Week streak'), d: L('רישום טעימות 7 ימים ברצף', 'Tastes logged 7 days in a row'), test: (c) => c.streak >= 7 },
+  { id: 'patience', e: '🔁', t: L('סבלנות משתלמת', 'Patience pays'), d: L('אותו מוצר 10 פעמים', 'The same food 10 times'), test: (c) => Object.values(c.counts).some((n) => n >= EXPOSURE_GOAL) },
+  { id: 'changed', e: '😍', t: L('שינוי טעם', 'Change of taste'), d: L('מה שלא אהב·ה – עכשיו אוהב·ת!', 'Disliked it before – loves it now!'), test: (c) => c.changed },
+  { id: 'finger', e: '✋', t: L('אוכל·ת לבד', 'Self-feeder'), d: L('אוכל אצבעות ראשון', 'First finger food'), test: (c) => c.logs.some((l) => ['finger', 'family'].includes(l.texture)) },
+  { id: 'chef', e: '👩‍🍳', t: L('שף·ית קטנ·ה', 'Little chef'), d: L('5 ארוחות ממתכונים', '5 meals from recipes'), test: (c) => new Set(c.logs.filter((l) => /^(מתוך|From):/.test(l.notes || '')).map((l) => startOfDay(l.ts) + l.notes)).size >= 5 },
 ];
 
 // בודק הישגים חדשים, שומר אותם על הילד ומחזיר את מה שנפתח עכשיו
@@ -110,7 +110,7 @@ function checkBadges(silent) {
   const fresh = BADGES.filter((b) => !kid.badges[b.id] && b.test(c));
   fresh.forEach((b) => { kid.badges[b.id] = Date.now(); });
   if (fresh.length) save();
-  if (!silent && fresh.length) setTimeout(() => celebrate(fresh[0].e, `הישג חדש: ${G(fresh[0].t)}!`), 2100);
+  if (!silent && fresh.length) setTimeout(() => celebrate(fresh[0].e, L(`הישג חדש: ${G(fresh[0].t)}!`, `New badge: ${fresh[0].t}!`)), 2100);
   return fresh;
 }
 
@@ -121,11 +121,11 @@ function badgesHTML(limit) {
   const n = BADGES.filter((b) => got[b.id]).length;
   return `
   <section class="card">
-    <div class="card-head"><h3>🏅 הישגים</h3><span class="pill">${n}/${BADGES.length}</span></div>
+    <div class="card-head"><h3>🏅 ${L('הישגים', 'Badges')}</h3><span class="pill">${n}/${BADGES.length}</span></div>
     <div class="badges">
       ${(limit ? list.slice(0, limit) : list).map((b) => `
         <div class="badge ${got[b.id] ? 'got' : ''}" title="${esc(G(b.d))}">
-          <span>${b.e}</span><b>${esc(G(b.t))}</b><small>${got[b.id] ? new Date(got[b.id]).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' }) : esc(G(b.d))}</small>
+          <span>${b.e}</span><b>${esc(G(b.t))}</b><small>${got[b.id] ? new Date(got[b.id]).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }) : esc(G(b.d))}</small>
         </div>`).join('')}
     </div>
   </section>`;
@@ -136,29 +136,29 @@ function varietyCardHTML() {
   const cats = CATEGORIES.filter((x) => !['allergen', 'custom'].includes(x.id));
   return `
   <section class="card">
-    <div class="card-head"><h3>🎨 מגוון</h3><span class="muted small">${c.foods.size} מוצרים</span></div>
+    <div class="card-head"><h3>🎨 ${L('מגוון', 'Variety')}</h3><span class="muted small">${c.foods.size} ${L('מוצרים', 'foods')}</span></div>
     <div class="variety">
       ${cats.map((cat) => { const all = FOODS.filter((f) => f.cat === cat.id).length; const got = c.byCat(cat.id); return `<div><span>${cat.emoji} ${cat.name}</span><div class="bar"><i style="width:${Math.round(got / all * 100)}%;background:${cat.color}"></i></div><b>${got}/${all}</b></div>`; }).join('')}
     </div>
-    <p class="small" style="margin-bottom:0">צבעי הקשת: ${Object.entries(RAINBOW).map(([k, v]) => `<span class="rb ${c.colors.has(k) ? 'on' : ''}">${v}</span>`).join(' ')}</p>
+    <p class="small" style="margin-bottom:0">${L('צבעי הקשת', 'Rainbow colors')}: ${Object.entries(RAINBOW).map(([k, v]) => `<span class="rb ${c.colors.has(k) ? 'on' : ''}">${v}</span>`).join(' ')}</p>
   </section>`;
 }
 
 function progressHTML() {
-  return `${subHead(`📈 ההתקדמות של ${esc(babyName())}`)}
+  return `${subHead(L(`📈 ההתקדמות של ${esc(babyName())}`, `📈 ${esc(babyName())}’s progress`))}
   ${badgesHTML()}
   ${varietyCardHTML()}
   ${textureCardHTML()}
   <div class="shortcut-row">
-    <button class="btn ghost" data-action="memories">📸 ספר זיכרונות</button>
-    <button class="btn ghost" data-action="report">🩺 דוח לרופא/ה</button>
+    <button class="btn ghost" data-action="memories">📸 ${L('ספר זיכרונות', 'Memory book')}</button>
+    <button class="btn ghost" data-action="report">🩺 ${L('דוח לרופא/ה', 'Doctor report')}</button>
   </div>`;
 }
 
 /* ===================== תכנית שבועית ורשימת קניות ===================== */
 const SPREAD = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 2, 4, 5], 5: [0, 1, 2, 3, 4], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6] };
 const weekStart = () => { const d = new Date(startOfDay(Date.now())); d.setDate(d.getDate() - d.getDay()); return d.getTime(); };
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const DAY_NAMES = IS_EN ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
 // תכנית מתגלגלת: 7 הימים הקרובים, מהיום
 function weeklyPlan() {
@@ -191,21 +191,21 @@ function weeklyPlan() {
 
 function planHTML() {
   const { days, today } = weeklyPlan();
-  return `${subHead('📅 תכנית ל-7 הימים הקרובים')}
-  <p class="small muted">התכנית מפזרת את האלרגנים לפי היעדים השבועיים, ומציעה מתכון וירק לחשיפה חוזרת לכל יום. מה שנרשם מסומן ✓ אוטומטית.</p>
-  <button class="btn accent block" data-action="shopping">🛒 רשימת קניות לשבוע</button>
+  return `${subHead(L('📅 תכנית ל-7 הימים הקרובים', '📅 Plan for the next 7 days'))}
+  <p class="small muted">${L('התכנית מפזרת את האלרגנים לפי היעדים השבועיים, ומציעה מתכון וירק לחשיפה חוזרת לכל יום. מה שנרשם מסומן ✓ אוטומטית.', 'The plan spreads allergens according to weekly targets and suggests a recipe and a vegetable for repeat exposure each day. Anything logged is ticked ✓ automatically.')}</p>
+  <button class="btn accent block" data-action="shopping">🛒 ${L('רשימת קניות לשבוע', 'Weekly shopping list')}</button>
   ${[...days.filter((d) => d.i >= today), ...days.filter((d) => d.i < today)].map((d, n, arr) => `
-    ${d.i < today && (n === 0 || arr[n - 1].i >= today) ? '<details class="past-days"><summary>ימים שעברו השבוע</summary>' : ''}
+    ${d.i < today && (n === 0 || arr[n - 1].i >= today) ? `<details class="past-days"><summary>${L('ימים שעברו השבוע', 'Earlier this week')}</summary>` : ''}
     <section class="card plan-day ${d.i === today ? 'today' : d.i < today ? 'past' : ''}">
-      <div class="card-head"><h3>${d.i === today ? '⭐ היום · ' : d.i === 1 ? 'מחר · ' : ''}${DAY_NAMES[new Date(d.ts).getDay()]} <span class="muted small">${new Date(d.ts).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span></h3></div>
+      <div class="card-head"><h3>${d.i === today ? `⭐ ${L('היום', 'Today')} · ` : d.i === 1 ? `${L('מחר', 'Tomorrow')} · ` : ''}${DAY_NAMES[new Date(d.ts).getDay()]} <span class="muted small">${new Date(d.ts).toLocaleDateString(LOCALE, { day: 'numeric', month: 'numeric' })}</span></h3></div>
       <div class="plan-chips">
         ${d.allergens.map((k) => `<span class="plan-chip ${d.done(k) ? 'done' : ''}">${allergenIcon(k)} ${ALLERGENS[k].name}${d.done(k) ? ' ✓' : ''}</span>`).join('')}
-        ${d.fresh ? `<span class="plan-chip fresh">🌱 חדש: ${allergenIcon(d.fresh)} ${ALLERGENS[d.fresh].name} (בבוקר)</span>` : ''}
-        ${!d.allergens.length && !d.fresh ? '<span class="muted small">יום חופשי מאלרגנים – רק ליהנות 🙂</span>' : ''}
+        ${d.fresh ? `<span class="plan-chip fresh">🌱 ${L('חדש', 'New')}: ${allergenIcon(d.fresh)} ${ALLERGENS[d.fresh].name} (${L('בבוקר', 'morning')})</span>` : ''}
+        ${!d.allergens.length && !d.fresh ? `<span class="muted small">${L('יום חופשי מאלרגנים – רק ליהנות 🙂', 'Allergen-free day – just enjoy 🙂')}</span>` : ''}
       </div>
       <div class="plan-ideas">
-        ${d.recipe ? `<button class="plan-idea" data-recipe="${d.recipe.id}"><span>${d.recipe.emoji}</span><b>${esc(d.recipe.name)}</b><em>מתכון ←</em></button>` : ''}
-        ${d.veg ? `<button class="plan-idea" data-food="${d.veg.id}"><span>${foodIcon(d.veg)}</span><b>ירק לחשיפה: ${esc(d.veg.name)}</b><em>${logsFor(d.veg.id).length}/${EXPOSURE_GOAL}</em></button>` : ''}
+        ${d.recipe ? `<button class="plan-idea" data-recipe="${d.recipe.id}"><span>${d.recipe.emoji}</span><b>${esc(d.recipe.name)}</b><em>${L('מתכון', 'Recipe')} ${FWD}</em></button>` : ''}
+        ${d.veg ? `<button class="plan-idea" data-food="${d.veg.id}"><span>${foodIcon(d.veg)}</span><b>${L('ירק לחשיפה', 'Veggie to repeat')}: ${esc(d.veg.name)}</b><em>${logsFor(d.veg.id).length}/${EXPOSURE_GOAL}</em></button>` : ''}
       </div>
     </section>
     ${d.i < today && n === arr.length - 1 ? '</details>' : ''}`).join('')}`;
@@ -236,12 +236,12 @@ function openShopping() {
   let checked = {};
   try { checked = JSON.parse(localStorage.getItem(key)) || {}; } catch { /* ריק */ }
   const items = shoppingItems();
-  const groups = [['allergen', '⭐ אלרגנים'], ...CATEGORIES.filter((c) => !['allergen', 'custom'].includes(c.id)).map((c) => [c.id, `${c.emoji} ${c.name}`]), ['extra', '🧂 עוד']];
+  const groups = [['allergen', L('⭐ אלרגנים', '⭐ Allergens')], ...CATEGORIES.filter((c) => !['allergen', 'custom'].includes(c.id)).map((c) => [c.id, `${c.emoji} ${c.name}`]), ['extra', L('🧂 עוד', '🧂 Other')]];
   openModal(`
-    <h2 class="sheet-title">🛒 רשימת קניות לשבוע</h2>
-    <p class="small muted">לפי התכנית ל-7 הימים הקרובים. סמנו מה כבר יש בבית.</p>
+    <h2 class="sheet-title">🛒 ${L('רשימת קניות לשבוע', 'Weekly shopping list')}</h2>
+    <p class="small muted">${L('לפי התכנית ל-7 הימים הקרובים. סמנו מה כבר יש בבית.', 'Based on the plan for the next 7 days. Tick what you already have at home.')}</p>
     ${groups.map(([g, title]) => { const list = items.filter((i) => i.group === g); return list.length ? `<h3 class="pk-head">${title}</h3><div class="shop-list">${list.map((i) => `<label class="shop-item ${checked[i.key] ? 'on' : ''}"><input type="checkbox" data-k="${esc(i.key)}" ${checked[i.key] ? 'checked' : ''}><span class="si-icon">${i.icon}</span>${esc(i.name)}</label>`).join('')}</div>` : ''; }).join('')}
-    <div class="sheet-foot"><button class="btn" id="shopShare">📤 שליחה לוואטסאפ</button></div>
+    <div class="sheet-foot"><button class="btn" id="shopShare">📤 ${L('שליחה לוואטסאפ', 'Share')}</button></div>
   `, (b) => {
     b.addEventListener('change', (e) => {
       const k = e.target.dataset.k; if (!k) return;
@@ -250,10 +250,10 @@ function openShopping() {
       try { localStorage.setItem(key, JSON.stringify(checked)); } catch { /* ללא אחסון */ }
     });
     $('#shopShare', b).onclick = async () => {
-      const text = `🛒 קניות לשבוע של ${babyName()} (Baby Bis)\n` + items.filter((i) => !checked[i.key]).map((i) => `• ${i.name}`).join('\n');
+      const text = L(`🛒 קניות לשבוע של ${babyName()} (Baby Bis)\n`, `🛒 ${babyName()}’s weekly shopping (Baby Bis)\n`) + items.filter((i) => !checked[i.key]).map((i) => `• ${i.name}`).join('\n');
       try {
         if (navigator.share) await navigator.share({ text });
-        else { await navigator.clipboard.writeText(text); toast('הרשימה הועתקה 📋'); }
+        else { await navigator.clipboard.writeText(text); toast(L('הרשימה הועתקה 📋', 'List copied 📋')); }
       } catch { /* בוטל */ }
     };
   });
@@ -262,43 +262,43 @@ function openShopping() {
 /* ===================== דוח לרופא/ה ===================== */
 function reportHTML() {
   const k = activeKid();
-  const fmt = (ts) => ts ? new Date(ts).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '–';
+  const fmt = (ts) => ts ? new Date(ts).toLocaleDateString(LOCALE, { day: 'numeric', month: 'numeric', year: '2-digit' }) : '–';
   const symText = (l) => (l.symptoms || []).map((s) => SYMPTOMS.find((x) => x.id === s)?.t).filter(Boolean).join(', ');
   const infos = activeAllergens().map(allergenInfo);
   const reactions = kidLogs().filter((l) => l.symptoms?.length).sort((a, b) => a.ts - b.ts);
   const tried = [...new Set(kidLogs().map((l) => l.foodId))].map(foodById).filter(Boolean);
-  const gender = state.baby?.gender === 'm' ? 'בן' : state.baby?.gender === 'f' ? 'בת' : '';
-  return `${subHead('🩺 דוח לרופא/ה')}
+  const gender = state.baby?.gender === 'm' ? L('בן', 'Boy') : state.baby?.gender === 'f' ? L('בת', 'Girl') : '';
+  return `${subHead(L('🩺 דוח לרופא/ה', '🩺 Doctor report'))}
   <div class="report-actions no-print">
-    <p class="small muted">דוח מסודר לביקור אצל רופא/ת הילדים, אחות טיפת חלב או אלרגולוג/ית. לחצו על הכפתור ובחרו "שמירה כ-PDF" או הדפסה.</p>
-    <button class="btn block" data-action="print">🖨️ הדפסה / שמירה כ-PDF</button>
+    <p class="small muted">${L('דוח מסודר לביקור אצל רופא/ת הילדים, אחות טיפת חלב או אלרגולוג/ית. לחצו על הכפתור ובחרו "שמירה כ-PDF" או הדפסה.', 'A tidy report for a visit to the pediatrician, health visitor or allergist. Tap the button and choose "Save as PDF" or print.')}</p>
+    <button class="btn block" data-action="print">🖨️ ${L('הדפסה / שמירה כ-PDF', 'Print / save as PDF')}</button>
   </div>
   <article class="report">
     <header class="rep-head">
-      <div><h1>דוח טעימות וחשיפה לאלרגנים</h1>
-      <p><b>${esc(babyName())}</b>${gender ? ` · ${gender}` : ''} · תאריך לידה: ${fmt(state.baby?.birth && new Date(state.baby.birth).getTime())} · גיל: ${ageText(state.baby?.birth)}</p>
-      <p class="muted">הופק ב-${fmt(Date.now())} · Baby Bis${state.parent?.name ? ` · מילא/ה: ${esc(state.parent.name)}` : ''}</p></div>
+      <div><h1>${L('דוח טעימות וחשיפה לאלרגנים', 'Food tasting & allergen exposure report')}</h1>
+      <p><b>${esc(babyName())}</b>${gender ? ` · ${gender}` : ''} · ${L('תאריך לידה', 'Date of birth')}: ${fmt(state.baby?.birth && new Date(state.baby.birth).getTime())} · ${L('גיל', 'Age')}: ${ageText(state.baby?.birth)}</p>
+      <p class="muted">${L('הופק ב-', 'Generated ')}${fmt(Date.now())} · Baby Bis${state.parent?.name ? ` · ${L('מילא/ה', 'Recorded by')}: ${esc(state.parent.name)}` : ''}</p></div>
       ${k?.avatar ? avatarHTML(64, k.avatar) : ''}
     </header>
 
-    <h2>⚠️ תגובות שנרשמו</h2>
-    ${reactions.length ? `<table><thead><tr><th>תאריך</th><th>מוצר</th><th>אלרגן</th><th>תסמינים</th><th>הערות</th></tr></thead><tbody>
-      ${reactions.map((l) => { const f = foodById(l.foodId); return `<tr class="bad"><td>${l.seed ? 'לפני האפליקציה' : fmt(l.ts)}</td><td>${esc(f?.name || '')}</td><td>${f?.allergen ? ALLERGENS[f.allergen].name : '–'}</td><td>${esc(symText(l))}</td><td>${l.seed ? 'דווח בשאלון הפתיחה' : esc(l.notes || '')}</td></tr>`; }).join('')}
-    </tbody></table>` : '<p>לא נרשמו תגובות.</p>'}
+    <h2>⚠️ ${L('תגובות שנרשמו', 'Recorded reactions')}</h2>
+    ${reactions.length ? `<table><thead><tr><th>${L('תאריך', 'Date')}</th><th>${L('מוצר', 'Food')}</th><th>${L('אלרגן', 'Allergen')}</th><th>${L('תסמינים', 'Symptoms')}</th><th>${L('הערות', 'Notes')}</th></tr></thead><tbody>
+      ${reactions.map((l) => { const f = foodById(l.foodId); return `<tr class="bad"><td>${l.seed ? L('לפני האפליקציה', 'Before the app') : fmt(l.ts)}</td><td>${esc(f?.name || '')}</td><td>${f?.allergen ? ALLERGENS[f.allergen].name : '–'}</td><td>${esc(symText(l))}</td><td>${l.seed ? L('דווח בשאלון הפתיחה', 'Reported in the opening questionnaire') : esc(l.notes || '')}</td></tr>`; }).join('')}
+    </tbody></table>` : `<p>${L('לא נרשמו תגובות.', 'No reactions recorded.')}</p>`}
 
-    <h2>⭐ אלרגנים</h2>
-    <table><thead><tr><th>אלרגן</th><th>סטטוס</th><th>חשיפה ראשונה</th><th>חשיפה אחרונה</th><th>סה״כ</th><th>4 שבועות אחרונים</th></tr></thead><tbody>
-      ${infos.map((i) => { const first = i.tolerated[i.tolerated.length - 1]; const real = i.tolerated.filter((l) => !l.seed); const month = real.filter((l) => Date.now() - l.ts < 28 * DAY).length; const when = (l) => (l?.seed ? 'לפני האפליקציה*' : fmt(l?.ts)); return `<tr class="${i.status === 'suspected' ? 'bad' : ''}"><td>${i.a.name}</td><td>${STATUS_TEXT[i.status]}</td><td>${when(first)}</td><td>${when(real[0] || i.last)}</td><td>${real.length}${i.tolerated.length > real.length ? '+' : ''}</td><td>${month}</td></tr>`; }).join('')}
+    <h2>⭐ ${L('אלרגנים', 'Allergens')}</h2>
+    <table><thead><tr><th>${L('אלרגן', 'Allergen')}</th><th>${L('סטטוס', 'Status')}</th><th>${L('חשיפה ראשונה', 'First exposure')}</th><th>${L('חשיפה אחרונה', 'Last exposure')}</th><th>${L('סה״כ', 'Total')}</th><th>${L('4 שבועות אחרונים', 'Last 4 weeks')}</th></tr></thead><tbody>
+      ${infos.map((i) => { const first = i.tolerated[i.tolerated.length - 1]; const real = i.tolerated.filter((l) => !l.seed); const month = real.filter((l) => Date.now() - l.ts < 28 * DAY).length; const when = (l) => (l?.seed ? L('לפני האפליקציה*', 'Before the app*') : fmt(l?.ts)); return `<tr class="${i.status === 'suspected' ? 'bad' : ''}"><td>${i.a.name}</td><td>${STATUS_TEXT[i.status]}</td><td>${when(first)}</td><td>${when(real[0] || i.last)}</td><td>${real.length}${i.tolerated.length > real.length ? '+' : ''}</td><td>${month}</td></tr>`; }).join('')}
     </tbody></table>
-    ${kidLogs().some((l) => l.seed) ? '<p class="muted" style="font-size:11px">* נחשף/ה לפני תחילת השימוש באפליקציה (לפי דיווח ההורים בשאלון הפתיחה), ללא תאריך מדויק. "+" = חשיפות נוספות לפני האפליקציה.</p>' : ''}
+    ${kidLogs().some((l) => l.seed) ? `<p class="muted" style="font-size:11px">${L('* נחשף/ה לפני תחילת השימוש באפליקציה (לפי דיווח ההורים בשאלון הפתיחה), ללא תאריך מדויק. "+" = חשיפות נוספות לפני האפליקציה.', '* Exposed before starting to use the app (as reported by the parents in the opening questionnaire), without an exact date. "+" = additional exposures before the app.')}</p>` : ''}
 
-    <h2>🥕 מוצרים שנטעמו (${tried.length})</h2>
-    ${CATEGORIES.map((c) => { const list = tried.filter((f) => f.cat === c.id); return list.length ? `<p><b>${c.name}:</b> ${list.map((f) => `${esc(f.name)} (${logsFor(f.id).length}${logsFor(f.id).some((l) => l.symptoms?.length) ? ', ⚠️ תגובה' : ''})`).join(', ')}</p>` : ''; }).join('')}
+    <h2>🥕 ${L('מוצרים שנטעמו', 'Foods tasted')} (${tried.length})</h2>
+    ${CATEGORIES.map((c) => { const list = tried.filter((f) => f.cat === c.id); return list.length ? `<p><b>${c.name}:</b> ${list.map((f) => `${esc(f.name)} (${logsFor(f.id).length}${logsFor(f.id).some((l) => l.symptoms?.length) ? `, ⚠️ ${L('תגובה', 'reaction')}` : ''})`).join(', ')}</p>` : ''; }).join('')}
 
-    <h2>🥄 מרקמים</h2>
+    <h2>🥄 ${L('מרקמים', 'Textures')}</h2>
     <p>${TEXTURES.map((t) => `${t.t}: ${kidLogs().filter((l) => l.texture === t.id).length}`).join(' · ')}</p>
 
-    <p class="rep-foot">המידע נרשם על ידי ההורים באפליקציית Baby Bis ואינו מהווה אבחנה רפואית.</p>
+    <p class="rep-foot">${L('המידע נרשם על ידי ההורים באפליקציית Baby Bis ואינו מהווה אבחנה רפואית.', 'This information was recorded by the parents in the Baby Bis app and is not a medical diagnosis.')}</p>
   </article>`;
 }
 
@@ -321,7 +321,7 @@ const Photos = {
     if (Cloud.active) return Cloud.putPhoto(logId, data);
     const all = this.local(); all[logId] = data;
     try { localStorage.setItem(this.key(), JSON.stringify(all)); }
-    catch { toast('אין מספיק מקום במכשיר לתמונה. חיבור לענן פותר את זה ☁️'); return false; }
+    catch { toast(L('אין מספיק מקום במכשיר לתמונה. חיבור לענן פותר את זה ☁️', 'Not enough space on the device for the photo. Connecting to the cloud solves this ☁️')); return false; }
     return true;
   },
   async get(logId) { return Cloud.active ? Cloud.getPhoto(logId) : this.local()[logId]; },
@@ -344,14 +344,14 @@ function memoriesHTML() {
   if (memFilter === 'photos') items = items.filter((l) => l.photo);
   const birth = state.baby?.birth ? new Date(state.baby.birth).getTime() : null;
   const ageAt = (ts) => birth ? Math.max(0, Math.floor((ts - birth) / (30.44 * DAY))) : null;
-  return `${subHead(`📸 ספר הזיכרונות של ${esc(babyName())}`)}
-  <div class="chips"><button class="chip ${memFilter === 'all' ? 'active' : ''}" data-mem="all">🍽️ כל הפעמים הראשונות</button><button class="chip ${memFilter === 'photos' ? 'active' : ''}" data-mem="photos">📸 עם תמונה</button></div>
+  return `${subHead(L(`📸 ספר הזיכרונות של ${esc(babyName())}`, `📸 ${esc(babyName())}’s memory book`))}
+  <div class="chips"><button class="chip ${memFilter === 'all' ? 'active' : ''}" data-mem="all">🍽️ ${L('כל הפעמים הראשונות', 'All the firsts')}</button><button class="chip ${memFilter === 'photos' ? 'active' : ''}" data-mem="photos">📸 ${L('עם תמונה', 'With photo')}</button></div>
   ${items.length ? `<div class="mem-grid">${items.map((l) => { const f = foodById(l.foodId) || { emoji: '❔', name: '' }; const r = REACTIONS.find((x) => x.id === l.liked); const a = ageAt(l.ts); return `
     <button class="mem ${l.photo ? 'has-photo' : ''}" data-edit="${l.id}">
       <div class="mem-pic">${l.photo ? `<img data-photo="${l.id}" alt="">` : `<span>${foodIcon(f)}</span>`}${r ? `<em>${r.e}</em>` : ''}</div>
       <b>${esc(f.name)}</b>
-      <small>${firsts.includes(l) ? 'פעם ראשונה · ' : ''}${new Date(l.ts).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })}${a !== null ? ` · בגיל ${a} ח׳` : ''}</small>
-    </button>`; }).join('')}</div>` : `<div class="empty"><span class="e-emoji">📸</span><p>${memFilter === 'photos' ? 'עוד אין תמונות. כשרושמים טעימה, בוחרים "📸 תמונה למזכרת".' : 'עוד אין טעימות.'}</p></div>`}`;
+      <small>${firsts.includes(l) ? `${L('פעם ראשונה', 'First time')} · ` : ''}${new Date(l.ts).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' })}${a !== null ? ` · ${L(`בגיל ${a} ח׳`, `at ${a} mo`)}` : ''}</small>
+    </button>`; }).join('')}</div>` : `<div class="empty"><span class="e-emoji">📸</span><p>${memFilter === 'photos' ? L('עוד אין תמונות. כשרושמים טעימה, בוחרים "📸 תמונה למזכרת".', 'No photos yet. When logging a taste, choose "📸 Keepsake photo".') : L('עוד אין טעימות.', 'No tastes yet.')}</p></div>`}`;
 }
 // טעינת התמונות אחרי ההצגה
 function hydratePhotos(root = document) {

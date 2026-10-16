@@ -29,7 +29,7 @@ const Cloud = (() => {
   function loadScript(src) {
     return new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = src; s.onload = res; s.onerror = () => rej(new Error('טעינת Firebase נכשלה. בדקו את החיבור לאינטרנט.'));
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error(L('טעינת Firebase נכשלה. בדקו את החיבור לאינטרנט.', 'Failed to load Firebase. Check your internet connection.')));
       document.head.appendChild(s);
     });
   }
@@ -105,7 +105,7 @@ const Cloud = (() => {
       ready.logs = true; fire();
     }, onError));
   }
-  function onError(e) { console.warn('cloud', e); toast('בעיה בסנכרון עם הענן. ננסה שוב 🔄'); }
+  function onError(e) { console.warn('cloud', e); toast(L('בעיה בסנכרון עם הענן. ננסה שוב 🔄', 'Cloud sync problem. Retrying 🔄')); }
 
   const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
   function familyPart(st) {
@@ -179,7 +179,7 @@ const Cloud = (() => {
   async function joinFamily(code) {
     code = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     const inv = await db.doc(`invites/${code}`).get().catch(() => null);
-    if (!inv?.exists) throw new Error('הקוד לא נמצא. בדקו שהוקלד נכון.');
+    if (!inv?.exists) throw new Error(L('הקוד לא נמצא. בדקו שהוקלד נכון.', 'Code not found. Check it was typed correctly.'));
     const fid = inv.data().familyId;
     await db.doc(`families/${fid}`).update({ members: firebase.firestore.FieldValue.arrayUnion(user.uid), [`joins.${user.uid}`]: code });
     await db.doc(`users/${user.uid}`).set({ familyId: fid }, { merge: true });
@@ -190,19 +190,19 @@ const Cloud = (() => {
   // הודעות שגיאה של Firebase בעברית
   function heError(e) {
     const m = {
-      'auth/email-already-in-use': 'כבר קיים חשבון עם המייל הזה. נסו להתחבר.',
-      'auth/invalid-email': 'כתובת המייל לא תקינה',
-      'auth/weak-password': 'הסיסמה צריכה להכיל לפחות 6 תווים',
-      'auth/user-not-found': 'לא נמצא חשבון עם המייל הזה',
-      'auth/wrong-password': 'הסיסמה שגויה',
-      'auth/invalid-credential': 'המייל או הסיסמה שגויים',
-      'auth/invalid-login-credentials': 'המייל או הסיסמה שגויים',
-      'auth/too-many-requests': 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.',
-      'auth/network-request-failed': 'אין חיבור לאינטרנט',
-      'auth/popup-closed-by-user': 'החלון נסגר לפני סיום ההתחברות',
-      'auth/unauthorized-domain': 'הכתובת הזו לא מאושרת בהגדרות Firebase (Authorized domains).',
+      'auth/email-already-in-use': L('כבר קיים חשבון עם המייל הזה. נסו להתחבר.', 'An account with this email already exists. Try signing in.'),
+      'auth/invalid-email': L('כתובת המייל לא תקינה', 'Invalid email address'),
+      'auth/weak-password': L('הסיסמה צריכה להכיל לפחות 6 תווים', 'Password must be at least 6 characters'),
+      'auth/user-not-found': L('לא נמצא חשבון עם המייל הזה', 'No account found with this email'),
+      'auth/wrong-password': L('הסיסמה שגויה', 'Wrong password'),
+      'auth/invalid-credential': L('המייל או הסיסמה שגויים', 'Wrong email or password'),
+      'auth/invalid-login-credentials': L('המייל או הסיסמה שגויים', 'Wrong email or password'),
+      'auth/too-many-requests': L('יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.', 'Too many attempts. Try again in a few minutes.'),
+      'auth/network-request-failed': L('אין חיבור לאינטרנט', 'No internet connection'),
+      'auth/popup-closed-by-user': L('החלון נסגר לפני סיום ההתחברות', 'The window closed before sign-in finished'),
+      'auth/unauthorized-domain': L('הכתובת הזו לא מאושרת בהגדרות Firebase (Authorized domains).', 'This address isn’t authorized in Firebase settings (Authorized domains).'),
     };
-    return new Error(m[e.code] || e.message || 'משהו השתבש, נסו שוב');
+    return new Error(m[e.code] || e.message || L('משהו השתבש, נסו שוב', 'Something went wrong, try again'));
   }
   const wrap = (fn) => async (...a) => { try { return await fn(...a); } catch (e) { throw heError(e); } };
 
