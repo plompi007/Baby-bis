@@ -71,11 +71,19 @@ const visibleAllergens = () => Object.entries(ALLERGENS).filter(([, a]) => !a.le
 const nutHeader = (keys, k, html) => (ALLERGENS[k].group === 'nuts' && keys.find((x) => ALLERGENS[x].group === 'nuts') === k ? html : '');
 const targetFor = (k) => state.settings.targets[k] ?? ALLERGENS[k].weeklyTarget;
 
+// לשון לפי מין הילד/ה: "אהב·ה" ← אהב / אהבה (ובלי מין ידוע: אהב/ה)
+const FINAL_LETTER = { 'כ': 'ך', 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ' };
+function G(s) {
+  const g = state.baby?.gender;
+  return String(s).replace(/([\u0590-\u05FF]+)·([הת])/g, (m, w, suf) =>
+    g === 'f' ? w + suf : g === 'm' ? w.slice(0, -1) + (FINAL_LETTER[w.slice(-1)] || w.slice(-1)) : `${w}/${suf}`);
+}
+
 const REACTIONS = [
-  { id: 'love', e: '😍', t: 'אהב/ה' },
+  { id: 'love', e: '😍', t: 'אהב·ה' },
   { id: 'ok',   e: '🙂', t: 'בסדר' },
   { id: 'meh',  e: '😐', t: 'ככה' },
-  { id: 'no',   e: '😖', t: 'לא אהב/ה' },
+  { id: 'no',   e: '😖', t: 'לא אהב·ה' },
 ];
 const AMOUNTS = [
   { id: 'lick',  t: 'ליקוק' },
@@ -121,7 +129,7 @@ function relDay(ts) {
   if (d < 7) return `לפני ${d} ימים`;
   return new Date(ts).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
 }
-function babyName() { return state.baby?.name || 'הקטנ/ה'; }
+function babyName() { return state.baby?.name || G('הקטנ·ה'); }
 
 /* ===================== חישובים ===================== */
 function logsFor(foodId) { return state.logs.filter((l) => l.foodId === foodId); }
@@ -161,7 +169,7 @@ function allergenInfo(key) {
 }
 
 const STATUS_TEXT = {
-  notStarted: 'עוד לא נחשף/ה',
+  get notStarted() { return G('עוד לא נחשף·ה'); },
   introducing: 'בשלב היכרות',
   maintaining: 'בשמירה ✓',
   suspected: 'חשד לתגובה – בבירור',
@@ -173,12 +181,12 @@ function reminders() {
   for (const k of activeAllergens()) {
     const info = allergenInfo(k);
     if (info.status === 'suspected') {
-      out.push({ info, kind: 'suspected', title: `${info.a.name}: נרשמה תגובה`, text: 'הפסיקו לתת ופנו לרופא/ת ילדים. התזכורות מושהות.' });
+      out.push({ info, kind: 'suspected', title: `${info.a.name}: נרשמה תגובה`, text: 'לא לתת עד התייעצות עם רופא/ת ילדים. התזכורות מושהות.' });
     } else if (info.level === 'overdue') {
-      out.push({ info, kind: 'overdue', title: `${info.a.name} – עברו ${info.daysSince} ימים!`, text: 'כדי לשמור על הסבילות כדאי לתת היום.' });
+      out.push({ info, kind: 'overdue', title: info.a.name, text: `עברו ${info.daysSince} ימים – כדאי לתת היום` });
     } else if (info.level === 'soon') {
       const left = Math.max(info.target - info.weekCount, 1);
-      out.push({ info, kind: 'soon', title: `${info.a.name} – הגיע הזמן`, text: info.status === 'introducing' ? `בשלב היכרות – כדאי להמשיך לחשוף (${info.tolerated.length}/3 חשיפות).` : `${info.weekCount}/${info.target} השבוע · עוד ${left} כדי לעמוד ביעד` });
+      out.push({ info, kind: 'soon', title: info.a.name, text: info.status === 'introducing' ? `בהיכרות · חשיפה ${info.tolerated.length + 1} מתוך 3` : `${info.weekCount} מתוך ${info.target} השבוע · עוד ${left}` });
     }
   }
   // הצעה לאלרגן חדש (אחד בכל פעם, בהפרש של 2–3 ימים)
@@ -190,7 +198,7 @@ function reminders() {
       const order = { high: 0, medium: 1, low: 2 };
       notStarted.sort((x, y) => order[x.a.priority] - order[y.a.priority]);
       const n = notStarted[0];
-      out.push({ info: n, kind: 'new', title: `אלרגן חדש להכיר: ${n.a.name}`, text: 'חשיפה מוקדמת מפחיתה סיכון לאלרגיה. מומלץ בבוקר, בכמות קטנה.' });
+      out.push({ info: n, kind: 'new', title: `חדש להכיר: ${n.a.name}`, text: 'בבוקר, בכמות קטנה, ביום רגיל בבית' });
     }
   }
   const rank = { suspected: 0, overdue: 1, soon: 2, new: 3 };
@@ -210,22 +218,27 @@ function lastNewAllergenIntro() {
 let tab = 'home';
 let foodFilter = { cat: 'all', q: '', show: 'all' };
 
-$$('.tabbar button').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
+$$('.tabbar [data-tab]').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
+$('#fabBtn').addEventListener('click', () => openPicker());
 $('#settingsBtn').addEventListener('click', openSettings);
+$('#tipsBtn').addEventListener('click', () => go('guide'));
 
 function go(t) {
   tab = t;
-  $$('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
+  $$('.tabbar [data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
   render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+// כותרת משנה עם כפתור חזרה, למסכים שאינם בסרגל התחתון
+const subHead = (title) => `<div class="subhead"><button class="back-btn" data-action="back" aria-label="חזרה">→</button><h2>${title}</h2></div>`;
 
 function render() {
   const v = $('#view');
   const gated = !currentUser || !state.onboarded;
   document.body.classList.toggle('gate', gated);
-  $('#babyLine').textContent = state.baby && !gated ? `${state.baby.name} · ${ageText(state.baby.birth)}` : 'מעקב טעימות ואלרגנים';
-  $('#settingsBtn').innerHTML = !gated && state.avatar ? avatarHTML(44) : '⚙️';
+  $('#babyLine').textContent = state.baby && !gated && tab !== 'home' ? `${state.baby.name} · ${ageText(state.baby.birth)}` : 'מעקב טעימות ואלרגנים';
+  $('#settingsBtn').innerHTML = !gated && state.avatar ? avatarHTML(40) : '⚙️';
+  $('#tipsBtn').classList.toggle('on', tab === 'guide');
   if (!currentUser) { v.innerHTML = authHTML(); bindAuth(); return; }
   if (!state.onboarded) { renderWizard(); return; }
   v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
@@ -248,46 +261,63 @@ function homeHTML() {
   const triedIds = new Set(state.logs.map((l) => l.foodId));
   const triedCount = [...triedIds].filter((id) => foodById(id)).length;
   const allergenDone = activeAllergens().filter((k) => ['maintaining', 'introducing'].includes(allergenInfo(k).status)).length;
-  const weekLogs = state.logs.filter((l) => !l.seed && Date.now() - l.ts < 7 * DAY).length;
   const rems = reminders();
+  const alerts = rems.filter((r) => r.kind === 'suspected');
+  const todo = rems.filter((r) => r.kind !== 'suspected');
   const age = ageMonths();
   const recent = state.logs.filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).slice(0, 4);
-  const heroEmojis = ['🥑', '🍌', '🥕', '🍓', '🥦', '🍠'];
-  const heroEmoji = heroEmojis[new Date().getDate() % heroEmojis.length];
 
   let ageNote = '';
-  if (age !== null && age < 4) ageNote = `<div class="card small">👶 ${esc(babyName())} עוד צעיר/ה למוצקים. ההמלצה היא להתחיל סביב גיל 6 חודשים (ולא לפני 4), כשמופיעים סימני מוכנות. בינתיים – אפשר לקרוא את המדריך 💡</div>`;
+  if (age !== null && age < 4) ageNote = `<div class="card soft small">👶 ${G(`${esc(babyName())} עוד צעיר·ה למוצקים.`)} ההמלצה היא להתחיל סביב גיל 6 חודשים (ולא לפני 4), כשמופיעים סימני מוכנות. בינתיים אפשר לקרוא את הטיפים 💡</div>`;
 
   return `
-  <section class="card hero">
-    <h2>היי ${esc(state.parent?.name || babyName())}! 👋</h2>
-    <p>${greetingLine()}</p>
-    ${state.avatar ? `<span class="hero-avatar">${avatarHTML(66)}</span>` : `<span class="hero-emoji">${heroEmoji}</span>`}
+  <section class="hero">
+    <div class="hero-top">
+      <div>
+        <p class="hero-hello">${greetingWord()}, ${esc(state.parent?.name || '')} ${greetingIcon()}</p>
+        <h2>${esc(babyName())} <span>· ${ageText(state.baby?.birth)}</span></h2>
+      </div>
+      ${state.avatar ? `<span class="hero-avatar">${avatarHTML(64)}</span>` : ''}
+    </div>
+    ${weekStripHTML()}
     <div class="stats">
-      <div class="stat"><b>${triedCount}</b><span>מוצרים נטעמו</span></div>
-      <div class="stat"><b>${allergenDone}/${activeAllergens().length}</b><span>אלרגנים הוכרו</span></div>
-      <div class="stat"><b>${weekLogs}</b><span>טעימות השבוע</span></div>
+      <div class="stat"><b>${triedCount}</b><span>מוצרים</span></div>
+      <div class="stat"><b>${allergenDone}/${activeAllergens().length}</b><span>אלרגנים</span></div>
+      <div class="stat"><b>${state.logs.filter((l) => !l.seed && Date.now() - l.ts < 7 * DAY).length}</b><span>השבוע</span></div>
     </div>
   </section>
   ${ageNote}
-  <h3 class="section-title">🔔 מה היום?</h3>
-  ${rems.length ? rems.map(reminderHTML).join('') : `<div class="card empty" style="padding:20px"><span class="e-emoji">🌟</span><p>הכל מעודכן! כל האלרגנים בשמירה.</p></div>`}
-  <button class="btn block" data-action="quicklog">＋ רישום טעימה</button>
-  <h3 class="section-title">🕒 טעימות אחרונות</h3>
-  ${recent.length ? `<div class="card" style="padding:4px">${recent.map(logHTML).join('')}</div>` : `<div class="empty"><span class="e-emoji">🥄</span><p>עוד אין טעימות. בחרו מוצר והתחילו!</p></div>`}
+  ${alerts.map(reminderHTML).join('')}
+  <section class="card today">
+    <div class="card-head"><h3>📋 מה כדאי לתת היום</h3>${todo.length ? `<span class="pill">${todo.length}</span>` : ''}</div>
+    ${todo.length ? todo.map(reminderHTML).join('') : `<div class="today-done"><span class="e-emoji">🌟</span><p>הכל מעודכן! אפשר פשוט ליהנות מהארוחה.</p></div>`}
+  </section>
+  <button class="btn block big-cta" data-action="picker">＋ רישום טעימה</button>
   ${recipeOfDayHTML()}
-  <h3 class="section-title">📝 פנינת חוכמה</h3>
+  <div class="section-row"><h3 class="section-title">🕒 טעימות אחרונות</h3>${state.logs.length ? '<a href="#" class="see-all" data-action="journal">ליומן המלא ←</a>' : ''}</div>
+  ${recent.length ? `<div class="card list">${recent.map((l) => logHTML(l, true)).join('')}</div>` : `<div class="card empty"><span class="e-emoji">🥄</span><p>עוד אין טעימות.<br>לחצו על ＋ למטה כדי לרשום את הראשונה.</p></div>`}
+  <div class="section-row"><h3 class="section-title">📝 פנינת חוכמה</h3><a href="#" class="see-all" data-action="tips">לכל הפתקים ←</a></div>
   <div class="note-home">${noteHTML(noteOfDay(), true)}</div>
   <button class="btn ghost block" data-action="shufflenote">🔀 עוד פתק</button>`;
 }
 
-function greetingLine() {
-  const h = new Date().getHours();
-  if (h < 11) return 'בוקר טוב! בוקר הוא זמן מצוין להכיר אלרגן חדש ☀️';
-  if (h < 16) return `צהריים טובים! מה ${esc(babyName())} טועמ/ת היום?`;
-  if (h < 20) return 'ערב טוב! אלרגנים חדשים – עדיף להשאיר למחר בבוקר 🌙';
-  return 'לילה טוב! נתראה מחר עם טעמים חדשים ✨';
+// שבוע אחרון: נקודה לכל יום לפי מספר הטעימות
+function weekStripHTML() {
+  const days = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+  const today = startOfDay(Date.now());
+  let out = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = today - i * DAY;
+    const n = state.logs.filter((l) => !l.seed && startOfDay(l.ts) === d).length;
+    out += `<div class="wday ${i === 0 ? 'today' : ''} ${n ? 'has' : ''}"><span>${days[new Date(d).getDay()]}</span><i>${n || ''}</i></div>`;
+  }
+  return `<div class="week-strip" aria-label="טעימות בשבוע האחרון">${out}</div>`;
 }
+function greetingWord() {
+  const h = new Date().getHours();
+  return h < 5 ? 'לילה טוב' : h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב';
+}
+function greetingIcon() { const h = new Date().getHours(); return h < 5 || h >= 21 ? '🌙' : h < 17 ? '☀️' : '🌆'; }
 
 let noteShift = 0;
 function noteOfDay() {
@@ -296,11 +326,16 @@ function noteOfDay() {
 }
 
 function reminderHTML(r) {
+  const btn = r.kind === 'suspected'
+    ? `<button class="btn small ghost" data-allergen="${r.info.key}">פרטים</button>`
+    : r.kind === 'new'
+      ? `<button class="btn small accent" data-quick-allergen="${r.info.key}">להכיר</button>`
+      : `<button class="check-btn" data-quick-allergen="${r.info.key}" aria-label="נתנו ${r.info.a.name}">✓</button>`;
   return `
   <div class="reminder ${r.kind}">
-    <span class="r-emoji anim-${r.kind === 'overdue' ? 'shake' : 'pulse'}">${allergenIcon(r.info.key)}</span>
+    <span class="r-emoji">${allergenIcon(r.info.key)}</span>
     <div class="r-text"><b>${esc(r.title)}</b><small>${esc(r.text)}</small>${reminderIdea(r)}</div>
-    ${r.kind === 'suspected' ? `<button class="btn small ghost" data-allergen="${r.info.key}">פרטים</button>` : `<button class="btn small" data-quick-allergen="${r.info.key}">נתנו ✓</button>`}
+    ${btn}
   </div>`;
 }
 
@@ -317,10 +352,13 @@ function foodsHTML() {
   const shows = [['all', 'הכל'], ['tried', 'נטעמו'], ['untried', 'עוד לא']]
     .map(([id, t]) => `<button class="chip ${foodFilter.show === id ? 'active' : ''}" data-show="${id}">${t}</button>`).join('');
 
+  const tried = allFoods().filter((f) => logsFor(f.id).length).length;
   return `
-  <input class="search" id="foodSearch" type="search" placeholder="🔍 חיפוש מוצר..." value="${esc(foodFilter.q)}">
-  <div class="chips">${chips}</div>
-  <div class="chips" style="margin-top:6px">${shows}</div>
+  <div class="filter-bar">
+    <input class="search" id="foodSearch" type="search" placeholder="🔍 חיפוש מוצר..." value="${esc(foodFilter.q)}" enterkeyhint="search">
+    <div class="chips">${chips}</div>
+    <div class="chips sub">${shows}<span class="count-note">${G(`${esc(babyName())} טעמ·ה ${tried} מתוך ${allFoods().length}`)}</span></div>
+  </div>
   <div class="grid">
     ${list.map(foodCardHTML).join('')}
     <button class="food" data-action="addfood"><span class="f-emoji anim-pulse">➕</span><span class="f-name">מוצר חדש</span><span class="f-count">הוספה</span></button>
@@ -344,14 +382,26 @@ function foodCardHTML(f) {
 }
 
 function allergensHTML() {
-  const keys = activeAllergens();
-  const infos = keys.map(allergenInfo);
+  const infos = activeAllergens().map(allergenInfo);
+  const order = { high: 0, medium: 1, low: 2 };
+  const groups = [
+    { t: '⚠️ דורש תשומת לב', items: infos.filter((i) => i.status === 'suspected') },
+    { t: '🔔 כדאי לתת השבוע', items: infos.filter((i) => ['overdue', 'soon'].includes(i.level)).sort((a, b) => (a.level === 'overdue' ? 0 : 1) - (b.level === 'overdue' ? 0 : 1)) },
+    { t: '✅ במסלול – כל הכבוד', items: infos.filter((i) => i.status !== 'suspected' && i.status !== 'notStarted' && i.level === 'ok') },
+    { t: '🌱 עוד לא הוכרו', items: infos.filter((i) => i.status === 'notStarted').sort((a, b) => order[a.a.priority] - order[b.a.priority]) },
+  ];
+  const count = (st) => infos.filter((i) => i.status === st).length;
   return `
-  <div class="card small">
-    ⭐ <b>למה זה חשוב?</b> חשיפה מוקדמת וקבועה לאלרגנים מפחיתה משמעותית את הסיכון לאלרגיה. אחרי שאלרגן הוכנס – צריך לשמור עליו בתפריט באופן קבוע (בבוטנים: ~3 פעמים בשבוע).
-    <a href="#" data-goto-guide>עוד במדריך ←</a>
+  <div class="summary">
+    <div><b>${count('maintaining')}</b><span>בשמירה</span></div>
+    <div><b>${count('introducing')}</b><span>בהיכרות</span></div>
+    <div><b>${count('notStarted')}</b><span>עוד לא</span></div>
   </div>
-  ${infos.map((i) => nutHeader(keys, i.key, `<h3 class="section-title">🌰 אגוזים <span class="small muted" style="font-weight:400">– כל אגוז בנפרד</span></h3>`) + allergenCardHTML(i)).join('')}
+  ${groups.filter((g) => g.items.length).map((g) => `<h3 class="section-title">${g.t}</h3>${g.items.map(allergenCardHTML).join('')}`).join('')}
+  <details class="guide why">
+    <summary><span style="font-size:22px">⭐</span>למה חשוב לשמור על חשיפה?</summary>
+    <ul><li>חשיפה מוקדמת וקבועה לאלרגנים מפחיתה משמעותית את הסיכון לאלרגיה.</li><li>אחרי שאלרגן הוכנס, צריך להמשיך לתת אותו באופן קבוע (בבוטנים: כ-3 פעמים בשבוע).</li><li><a href="#" data-goto-guide>עוד במדריך ←</a></li></ul>
+  </details>
   <button class="btn ghost block" data-action="calendar">📅 הוספת תזכורות קבועות ליומן</button>
   <p class="small muted" style="text-align:center">אפשר לשנות יעדים ולכבות אלרגנים בהגדרות ⚙️</p>`;
 }
@@ -361,7 +411,7 @@ function allergenCardHTML(i) {
   const pct = i.status === 'notStarted' ? 0 : Math.min(1, i.weekCount / i.target);
   const ringColor = i.status === 'suspected' ? 'var(--red)' : i.level === 'overdue' ? 'var(--red)' : i.level === 'soon' ? 'var(--yellow)' : 'var(--green)';
   const dots = Array.from({ length: Math.max(i.target, i.weekDays) }, (_, n) => `<i class="${n < i.weekDays ? 'on' : ''}" style="animation-delay:${n * 80}ms"></i>`).join('');
-  let line = 'עוד לא נחשף/ה';
+  let line = i.a.priority === 'high' ? 'מומלץ להכיר בקרוב' : 'עוד לא הוכר';
   if (i.last) line = `אחרון: ${relDay(i.last.ts)} · ${i.weekCount}/${i.target} השבוע`;
   if (i.status === 'suspected') line = `תגובה נרשמה ${relDay(i.reacted.ts)}`;
   return `
@@ -377,12 +427,12 @@ function allergenCardHTML(i) {
       <div class="small muted lvl-${i.level}">${line}</div>
       ${i.status !== 'notStarted' && i.status !== 'suspected' ? `<div class="week-dots" title="ימי חשיפה ב-7 הימים האחרונים">${dots}</div>` : ''}
     </div>
-    ${i.status === 'suspected' ? '' : `<button class="btn small" data-quick-allergen="${i.key}">＋</button>`}
+    ${i.status === 'suspected' ? '' : i.status === 'notStarted' ? `<button class="btn small accent" data-quick-allergen="${i.key}">להכיר</button>` : `<button class="check-btn" data-quick-allergen="${i.key}" aria-label="נתנו ${i.a.name}">✓</button>`}
   </div>`;
 }
 
 function journalHTML() {
-  if (!state.logs.length) return `<div class="empty"><span class="e-emoji">📖</span><p>היומן ריק. כל טעימה שתרשמו תופיע כאן.</p></div>`;
+  if (!state.logs.length) return subHead('📖 יומן טעימות') + `<div class="empty"><span class="e-emoji">📖</span><p>היומן ריק. כל טעימה שתרשמו תופיע כאן.</p></div>`;
   const sorted = [...state.logs].sort((a, b) => b.ts - a.ts);
   const groups = [];
   for (const l of sorted) {
@@ -390,31 +440,30 @@ function journalHTML() {
     if (!groups.length || groups[groups.length - 1].d !== d) groups.push({ d, items: [] });
     groups[groups.length - 1].items.push(l);
   }
-  return `
-  <div class="row" style="margin-bottom:6px">
-    <div class="small muted">${state.logs.length} טעימות · ${new Set(state.logs.map((l) => l.foodId)).size} מוצרים שונים</div>
-  </div>
+  return `${subHead('📖 יומן טעימות')}
+  <p class="small muted">${state.logs.length} טעימות · ${new Set(state.logs.map((l) => l.foodId)).size} מוצרים שונים · לחצו על טעימה כדי לערוך</p>
   ${groups.map((g) => `
     <div class="day-head">${new Date(g.d).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-    <div class="card" style="padding:4px">${g.items.map((l) => logHTML(l, true)).join('')}</div>`).join('')}`;
+    <div class="card list">${g.items.map((l) => logHTML(l, true, true)).join('')}</div>`).join('')}`;
 }
 
-function logHTML(l, withDelete) {
+function logHTML(l, editable, timeOnly) {
   const f = foodById(l.foodId) || { emoji: '❔', name: 'מוצר שנמחק' };
   const r = REACTIONS.find((x) => x.id === l.liked);
   const a = AMOUNTS.find((x) => x.id === l.amount);
   const sym = (l.symptoms || []).map((s) => SYMPTOMS.find((x) => x.id === s)?.t).filter(Boolean);
   const time = new Date(l.ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  const when = l.seed ? '📋 מהשאלון הראשוני' : timeOnly ? time : `${relDay(l.ts)} · ${time}`;
+  const tag = editable && f.id ? 'button' : 'div';
   return `
-  <div class="log ${sym.length ? 'has-symptoms' : ''}">
+  <${tag} class="log ${sym.length ? 'has-symptoms' : ''}" ${editable && f.id ? `data-edit="${l.id}"` : ''}>
     <span class="l-emoji">${foodIcon(f)}</span>
-    <div class="l-main">
-      <b>${esc(f.name)} ${f.allergen ? '⭐' : ''}</b>
-      <small>${l.seed ? '📋 מהשאלון הראשוני' : withDelete ? time : relDay(l.ts)}${a ? ' · ' + a.t : ''}${sym.length ? ' · ⚠️ ' + esc(sym.join(', ')) : ''}${l.notes && !l.seed ? ' · ' + esc(l.notes) : ''}</small>
-    </div>
+    <span class="l-main">
+      <b>${esc(f.name)} ${f.allergen ? '<span class="mini-star">⭐</span>' : ''}</b>
+      <small>${when}${a ? ' · ' + a.t : ''}${sym.length ? ' · ⚠️ ' + esc(sym.join(', ')) : ''}${l.notes && !l.seed ? ' · ' + esc(l.notes) : ''}</small>
+    </span>
     <span class="l-react">${r ? r.e : ''}</span>
-    ${withDelete ? `<button class="l-del" data-del="${l.id}" aria-label="מחיקה">🗑️</button>` : ''}
-  </div>`;
+  </${tag}>`;
 }
 
 let tipsSeg = 'notes';
@@ -424,7 +473,7 @@ function tipsHTML() {
     <button class="${tipsSeg === 'notes' ? 'on' : ''}" data-seg="notes">📝 פתקי חוכמה</button>
     <button class="${tipsSeg === 'guide' ? 'on' : ''}" data-seg="guide">📚 מדריך מלא</button>
   </div>`;
-  return seg + (tipsSeg === 'notes' ? notesHTML() : guideHTML());
+  return subHead('💡 טיפים ומדריך') + seg + (tipsSeg === 'notes' ? notesHTML() : guideHTML());
 }
 
 function notesHTML() {
@@ -476,7 +525,7 @@ function guideHTML() {
 function bindView() {
   const v = $('#view');
   v.onclick = (e) => {
-    const t = e.target.closest('[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-del],[data-goto-guide],[data-seg],[data-notecat],[data-favnote],[data-recipe],[data-rtag]');
+    const t = e.target.closest('[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-edit],[data-goto-guide],[data-seg],[data-notecat],[data-favnote],[data-recipe],[data-rtag]');
     if (!t) return;
     if (t.dataset.favnote) { e.stopPropagation(); return toggleFav('favNotes', t.dataset.favnote, t); }
     if (t.dataset.seg) { tipsSeg = t.dataset.seg; return render(); }
@@ -488,10 +537,14 @@ function bindView() {
     if (t.dataset.cat) { foodFilter.cat = t.dataset.cat; return render(); }
     if (t.dataset.show) { foodFilter.show = t.dataset.show; return render(); }
     if (t.dataset.allergen) return openAllergen(t.dataset.allergen);
-    if (t.dataset.del) return deleteLog(t.dataset.del);
+    if (t.dataset.edit) { const l = state.logs.find((x) => x.id === t.dataset.edit); return l && openLog(l.foodId, l); }
     if (t.hasAttribute('data-goto-guide')) { e.preventDefault(); tipsSeg = 'guide'; return go('guide'); }
     const a = t.dataset.action;
-    if (a === 'quicklog') { go('foods'); setTimeout(() => $('#foodSearch')?.focus(), 50); }
+    if (['journal', 'tips', 'back', 'picker'].includes(a)) e.preventDefault();
+    if (a === 'picker') openPicker();
+    if (a === 'journal') go('journal');
+    if (a === 'tips') { tipsSeg = 'notes'; go('guide'); }
+    if (a === 'back') go('home');
     if (a === 'addfood') openAddFood();
     if (a === 'calendar') downloadICS();
     if (a === 'shufflenote') {
@@ -520,16 +573,76 @@ function bindView() {
 }
 
 function deleteLog(id) {
-  if (!confirm('למחוק את הרישום?')) return;
-  state.logs = state.logs.filter((l) => l.id !== id);
-  save(); render(); toast('נמחק');
+  const i = state.logs.findIndex((l) => l.id === id);
+  if (i < 0) return;
+  const [removed] = state.logs.splice(i, 1);
+  save(); render();
+  toast('הטעימה נמחקה', [{ label: 'ביטול', fn: () => { state.logs.push(removed); save(); render(); } }]);
 }
 
-// כפתור "נתנו ✓" – בוחר את המוצר שבו השתמשו לאחרונה לאותו אלרגן
+// הכפתור ✓ ליד אלרגן: אם האלרגן כבר מוכר – רישום מהיר בלחיצה אחת. אם חדש – טופס מלא עם הנחיות בטיחות
 function quickAllergen(key) {
-  const recent = allergenLogs(key)[0];
-  const food = recent ? foodById(recent.foodId) : allFoods().find((f) => f.allergen === key);
-  if (food) openLog(food.id);
+  const recent = allergenLogs(key).find((l) => !l.seed) || allergenLogs(key)[0];
+  const food = recent ? foodById(recent.foodId) : foodById(ALLERGENS[key].rep) || allFoods().find((f) => f.allergen === key);
+  if (!food) return;
+  if (allergenInfo(key).status === 'notStarted') return openLog(food.id);
+  quickLog(food.id);
+}
+
+// רישום בלחיצה אחת, עם אפשרות לבטל או להוסיף פרטים
+function quickLog(foodId) {
+  const f = foodById(foodId);
+  const log = { id: uid(), foodId, ts: Date.now(), amount: 'taste', symptoms: [], notes: '' };
+  state.logs.push(log);
+  save(); closeModal(); render();
+  const count = logsFor(foodId).length;
+  celebrate(foodIcon(f), count === 1 ? `טעימה ראשונה של ${f.name}! 🎉` : `${f.name} – טעימה ${count} 👏`);
+  toast(`✓ ${f.name} נרשם`, [
+    { label: 'ביטול', fn: () => { state.logs = state.logs.filter((l) => l.id !== log.id); save(); render(); } },
+    { label: 'פרטים', fn: () => openLog(foodId, log) },
+  ]);
+}
+
+// חלון בחירת מוצר (מהכפתור ＋): מומלצים, אחרונים, וכל המוצרים עם חיפוש
+function openPicker() {
+  const due = reminders().filter((r) => ['overdue', 'soon'].includes(r.kind)).map((r) => {
+    const l = allergenLogs(r.info.key).find((x) => !x.seed) || allergenLogs(r.info.key)[0];
+    return foodById(l?.foodId) || foodById(r.info.a.rep);
+  }).filter(Boolean);
+  const recentIds = [...new Set(state.logs.filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).map((l) => l.foodId))].slice(0, 8);
+  const recent = recentIds.map(foodById).filter(Boolean);
+  const tile = (f) => `<button class="pick-tile ${f.allergen ? 'is-allergen' : ''}" data-pick="${f.id}"><span class="anim-${f.anim}" style="${animStyle(f)}">${foodIcon(f)}</span><b>${esc(f.name)}</b></button>`;
+  let cat = 'all';
+  const list = (q) => allFoods().filter((f) => (cat === 'all' || f.cat === cat) && (!q || f.name.includes(q)));
+  openModal(`
+    <h2 class="sheet-title">${G(`מה ${esc(babyName())} טעמ·ה?`)}</h2>
+    <input class="search" id="pkSearch" type="search" placeholder="🔍 חיפוש מוצר..." enterkeyhint="search">
+    <div id="pkTop">
+      ${due.length ? `<h3 class="pk-head">🔔 כדאי היום</h3><div class="pick-row">${due.map(tile).join('')}</div>` : ''}
+      ${recent.length ? `<h3 class="pk-head">🕒 לאחרונה</h3><div class="pick-row">${recent.map(tile).join('')}</div>` : ''}
+      <button class="recipe-link" data-action="go-recipes">🍲 הכנתם מתכון? רישום כל המרכיבים יחד ←</button>
+      <h3 class="pk-head">🍽️ כל המוצרים</h3>
+      <div class="chips">${[{ id: 'all', name: 'הכל', emoji: '🍽️' }, ...CATEGORIES.filter((c) => c.id !== 'custom' || state.customFoods.length)].map((c) => `<button class="chip ${c.id === 'all' ? 'active' : ''}" data-pcat="${c.id}">${c.emoji} ${c.name}</button>`).join('')}</div>
+    </div>
+    <div class="pick-grid-all" id="pkGrid">${list('').map(tile).join('')}</div>
+  `, (b) => {
+    const grid = $('#pkGrid', b), top = $('#pkTop', b);
+    const refresh = () => {
+      const q = $('#pkSearch', b).value.trim();
+      $$('.pk-head, .pick-row, .recipe-link', top).forEach((x) => { x.hidden = !!q; });
+      const items = list(q);
+      grid.innerHTML = items.length ? items.map(tile).join('') : `<div class="empty small">לא מצאנו "${esc(q)}". <button class="link-btn" data-action="addfood-q">להוסיף כמוצר חדש?</button></div>`;
+    };
+    $('#pkSearch', b).oninput = refresh;
+    b.onclick = (e) => {
+      const t = e.target.closest('[data-pick],[data-pcat],[data-action]');
+      if (!t) return;
+      if (t.dataset.pick) return openLog(t.dataset.pick);
+      if (t.dataset.pcat) { cat = t.dataset.pcat; $$('[data-pcat]', b).forEach((x) => x.classList.toggle('active', x === t)); return refresh(); }
+      if (t.dataset.action === 'go-recipes') { closeModal(); return go('recipes'); }
+      if (t.dataset.action === 'addfood-q') return openAddFood($('#pkSearch', b).value.trim());
+    };
+  });
 }
 
 function toggleFav(listKey, id, btn) {
@@ -646,7 +759,7 @@ function openRecipe(id) {
     <h3 class="section-title">👩‍🍳 הכנה</h3>
     <ol class="steps">${r.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
     <div class="card small">💡 ${esc(r.tip)}</div>
-    <div class="row">
+    <div class="sheet-foot">
       <button class="btn ghost" id="favRecipe">${fav ? '❤️ שמור' : '🤍 שמירה'}</button>
       <button class="btn" id="madeIt" style="flex:2">😋 הכנו! רישום טעימה</button>
     </div>
@@ -667,26 +780,32 @@ function openRecipeLog(r) {
       <div class="muted small">כל מרכיב שתסמנו יירשם כטעימה</div>
     </div>
     <form class="form" id="rlForm">
-      <label>מה ${esc(babyName())} אכל/ה?</label>
+      <label>${G(`מה ${esc(babyName())} אכל·ה?`)}</label>
       <div class="symptoms ing-pick">${r.ingredients.map((fid) => { const f = foodById(fid); return `<label><input type="checkbox" value="${fid}" ${blockers.includes(f.allergen) ? '' : 'checked'}>${foodIcon(f)} ${esc(f.name)}</label>`; }).join('')}</div>
       ${blockers.length ? `<div class="warn-banner small">⚠️ אלרגן שעוד לא הוכר לא סומן. סמנו אותו רק אם הוא אכן נאכל.</div>` : ''}
-      <label>מתי?</label>
-      <input type="datetime-local" id="rlTime" value="${now.toISOString().slice(0, 16)}" required>
-      <label>איך היה?</label>
-      <div class="choice-row" data-group="liked">${REACTIONS.map((x, i) => `<button type="button" class="choice ${i === 1 ? 'on' : ''}" data-val="${x.id}"><span class="ce">${x.e}</span>${x.t}</button>`).join('')}</div>
-      <label>תסמינים? <span class="muted small">(השאירו ריק אם הכל תקין)</span></label>
-      <div class="symptoms sym-pick">${SYMPTOMS.filter((s) => !s.hidden).map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
-      <div id="emergencyBox"></div>
-      <div style="height:14px"></div>
-      <button class="btn block" type="submit">שמירה ✓</button>
+      <label>איך היה? <span class="muted small">(לא חובה)</span></label>
+      <div class="choice-row reactions" data-group="liked">${REACTIONS.map((x) => `<button type="button" class="choice" data-val="${x.id}"><span class="ce">${x.e}</span>${G(x.t)}</button>`).join('')}</div>
+      <div class="opt-rows">
+        <button type="button" class="opt-row" data-toggle="time">🕒 <span>עכשיו</span><em>שינוי</em></button>
+        <div class="opt-body" data-body="time" hidden><input type="datetime-local" id="rlTime" value="${now.toISOString().slice(0, 16)}"></div>
+        <button type="button" class="opt-row warn" data-toggle="sym">⚠️ הייתה תגובה? <em>הכל תקין</em></button>
+        <div class="opt-body" data-body="sym" hidden>
+          <div class="symptoms sym-pick">${SYMPTOMS.filter((s) => !s.hidden).map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
+          <div id="emergencyBox"></div>
+        </div>
+      </div>
+      <div class="sheet-foot"><button class="btn" type="submit">שמירה ✓</button></div>
     </form>
   `, (b) => {
     $('.choice-row', b).addEventListener('click', (e) => {
       const c = e.target.closest('.choice'); if (!c) return;
-      $$('.choice', e.currentTarget).forEach((x) => x.classList.toggle('on', x === c));
+      const wasOn = c.classList.contains('on');
+      $$('.choice', e.currentTarget).forEach((x) => x.classList.toggle('on', x === c && !wasOn));
     });
+    $$('[data-toggle]', b).forEach((t) => t.onclick = () => { const body = $(`[data-body="${t.dataset.toggle}"]`, b); body.hidden = !body.hidden; });
     $('.sym-pick', b).addEventListener('change', () => {
       const sel = $$('.sym-pick input:checked', b).map((x) => x.value);
+      $('[data-toggle="sym"] em', b).textContent = sel.length ? `${sel.length} סומנו` : 'הכל תקין';
       $('#emergencyBox', b).innerHTML = sel.some((s) => SEVERE.includes(s))
         ? `<div class="emergency">🚨 סימנים של תגובה חמורה אפשרית. אם הם מתרחשים עכשיו – <a href="tel:101">חייגו 101 מיד</a>.</div>`
         : sel.length ? `<div class="warn-banner small">הפסיקו לתת, צלמו ופנו לרופא/ת הילדים.</div>` : '';
@@ -695,7 +814,7 @@ function openRecipeLog(r) {
       e.preventDefault();
       const foods = $$('.ing-pick input:checked', b).map((x) => x.value);
       if (!foods.length) return toast('סמנו לפחות מרכיב אחד');
-      const ts = new Date($('#rlTime', b).value).getTime() || Date.now();
+      const ts = $('[data-body="time"]', b).hidden ? Date.now() : (new Date($('#rlTime', b).value).getTime() || Date.now());
       const liked = $('[data-group="liked"] .on', b)?.dataset.val;
       const symptoms = $$('.sym-pick input:checked', b).map((x) => x.value);
       for (const foodId of foods) state.logs.push({ id: uid(), foodId, ts, liked, amount: 'meal', symptoms, notes: `מתוך: ${r.name}` });
@@ -709,7 +828,9 @@ function openRecipeLog(r) {
 
 /* ===================== מודאל ===================== */
 function openModal(html, onBind) {
+  $('#toast').classList.remove('show');
   $('#modalBody').innerHTML = html;
+  $('.modal-card').scrollTop = 0;
   $('#modal').hidden = false;
   document.body.style.overflow = 'hidden';
   onBind?.($('#modalBody'));
@@ -732,7 +853,7 @@ function openFood(id) {
   const reacted = logs.some((l) => l.symptoms?.length);
   let encourage = '';
   if (n === 0) encourage = 'טעימה ראשונה מחכה! 🌟';
-  else if (n < EXPOSURE_GOAL && logs[0]?.liked === 'no') encourage = `לא אהב/ה? זה טבעי לגמרי. מחקרים מראים שלפעמים צריך 8–10 חשיפות ויותר. עוד ${EXPOSURE_GOAL - n} ונראה 💪`;
+  else if (n < EXPOSURE_GOAL && logs[0]?.liked === 'no') encourage = `${G('לא אהב·ה')}? זה טבעי לגמרי. מחקרים מראים שלפעמים צריך 8–10 חשיפות ויותר. עוד ${EXPOSURE_GOAL - n} ונראה 💪`;
   else if (n < EXPOSURE_GOAL) encourage = `עוד ${EXPOSURE_GOAL - n} טעימות כדי לתת לטעם הזה צ׳אנס הוגן`;
   else encourage = `${n} טעימות – ${likes ? 'מוצר מוכר ואהוב! 🏆' : 'נתתם צ׳אנס הוגן. אפשר להמשיך להציע מדי פעם בצורות אחרות.'}`;
 
@@ -752,12 +873,18 @@ function openFood(id) {
     ${f.tip ? `<div class="card small">🍽️ <b>איך מגישים:</b> ${esc(f.tip)}</div>` : ''}
     ${f.choke ? `<div class="warn-banner small">⚠️ <b>בטיחות:</b> ${esc(f.choke)}</div>` : ''}
     ${al ? `<div class="card small">⭐ <b>הכנסת ${al.name}:</b> ${esc(al.how)}</div>` : ''}
-    <button class="btn block" id="logBtn">😋 רישום טעימה</button>
-    ${n ? `<h3 class="section-title">היסטוריה</h3><div class="card" style="padding:4px">${logs.slice(0, 8).map((l) => logHTML(l)).join('')}</div>` : ''}
+    ${n ? `<h3 class="section-title">היסטוריה</h3><div class="card list">${logs.slice(0, 8).map((l) => logHTML(l, true)).join('')}</div>` : ''}
     ${f.custom ? `<button class="btn ghost block" id="delFood" style="margin-top:10px">מחיקת מוצר</button>` : ''}
+    <div class="sheet-foot">
+      ${n && !reacted ? `<button class="btn" id="quickBtn">⚡ ${G('טעמ·ה עכשיו')}</button><button class="btn ghost" id="logBtn">📝 עם פרטים</button>`
+        : `<button class="btn" id="logBtn">😋 רישום טעימה</button>`}
+    </div>
   `, (b) => {
     requestAnimationFrame(() => { const bar = $('.bar i', b); if (bar) bar.style.width = bar.dataset.w + '%'; });
     $('#logBtn', b).onclick = () => openLog(id);
+    const qb = $('#quickBtn', b);
+    if (qb) qb.onclick = () => quickLog(id);
+    $('.card.list', b)?.addEventListener('click', (e) => { const t = e.target.closest('[data-edit]'); const l = t && state.logs.find((x) => x.id === t.dataset.edit); if (l) openLog(l.foodId, l); });
     const del = $('#delFood', b);
     if (del) del.onclick = () => {
       if (!confirm('למחוק את המוצר ואת כל הטעימות שלו?')) return;
@@ -768,69 +895,95 @@ function openFood(id) {
   });
 }
 
-function openLog(foodId) {
+function openLog(foodId, edit) {
   const f = foodById(foodId);
   const al = f.allergen ? ALLERGENS[f.allergen] : null;
-  const isFirstAllergen = al && allergenLogs(f.allergen).length === 0;
-  const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  const isFirstAllergen = !edit && al && allergenLogs(f.allergen).length === 0;
+  const when = new Date(edit ? edit.ts : Date.now()); when.setMinutes(when.getMinutes() - when.getTimezoneOffset());
+  const hasSym = !!edit?.symptoms?.filter((x) => x !== 'past').length;
   let warn = '';
   if (isFirstAllergen) {
     const lastIntro = lastNewAllergenIntro();
-    warn += `<div class="allergen-banner">⭐ חשיפה ראשונה ל${al.name}! התחילו בכמות קטנה, בבית, כש${esc(babyName())} בריא/ה, ועקבו כשעתיים אחרי.</div>`;
-    if (lastIntro && daysBetween(lastIntro, Date.now()) < 2) warn += `<div class="warn-banner small">💡 הוכנס אלרגן חדש לפני פחות מיומיים. מומלץ להמתין 2–3 ימים בין אלרגנים חדשים, כדי לזהות ממה הייתה תגובה.</div>`;
-    if (new Date().getHours() >= 16) warn += `<div class="warn-banner small">🌙 שעת ערב – אלרגן חדש עדיף לתת בבוקר/צהריים, כדי שתוכלו לעקוב אחרי תגובה בזמן ערות.</div>`;
+    warn += `<div class="allergen-banner">⭐ ${G(`חשיפה ראשונה ל${al.name}! מתחילים בכמות קטנה, בבית, כש${esc(babyName())} בריא·ה, ועוקבים כשעתיים אחרי.`)}</div>`;
+    if (lastIntro && daysBetween(lastIntro, Date.now()) < 2) warn += `<div class="warn-banner small">💡 הוכנס אלרגן חדש לפני פחות מיומיים. כדאי להמתין 2–3 ימים בין אלרגנים חדשים, כדי לדעת ממה הייתה תגובה.</div>`;
+    if (new Date().getHours() >= 16) warn += `<div class="warn-banner small">🌙 שעת ערב: אלרגן חדש עדיף לתת בבוקר או בצהריים, כדי שתוכלו לעקוב אחרי תגובה בזמן ערות.</div>`;
   }
-
+  const isNow = !edit;
   openModal(`
-    <div class="detail-hero" style="padding:0">
-      <div class="stage mini" style="--stage:${CATEGORIES.find((c) => c.id === f.cat)?.color || '#ffd9c9'}">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="font-size:64px;${animStyle(f)}">${foodIcon(f)}</span></div>
-      <h2 style="font-size:22px">טעימה: ${esc(f.name)}</h2>
+    <div class="log-head">
+      <div class="stage mini" style="--stage:${CATEGORIES.find((c) => c.id === f.cat)?.color || '#ffd9c9'}">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="font-size:56px;${animStyle(f)}">${foodIcon(f)}</span></div>
+      <div><h2>${esc(f.name)}</h2><span class="muted small">${edit ? 'עריכת טעימה' : 'טעימה חדשה'}${al ? ` · ⭐ ${al.name}` : ''}</span></div>
     </div>
     ${warn}
     <form class="form" id="logForm">
-      <label>מתי?</label>
-      <input type="datetime-local" id="lgTime" value="${now.toISOString().slice(0, 16)}" required>
-      <label>איך היה?</label>
-      <div class="choice-row" data-group="liked">${REACTIONS.map((r, i) => `<button type="button" class="choice ${i === 1 ? 'on' : ''}" data-val="${r.id}"><span class="ce">${r.e}</span>${r.t}</button>`).join('')}</div>
+      <label>איך היה? <span class="muted small">(לא חובה)</span></label>
+      <div class="choice-row reactions" data-group="liked" data-optional>${REACTIONS.map((r) => `<button type="button" class="choice ${edit?.liked === r.id ? 'on' : ''}" data-val="${r.id}"><span class="ce">${r.e}</span>${G(r.t)}</button>`).join('')}</div>
       <label>כמה?</label>
-      <div class="choice-row" data-group="amount">${AMOUNTS.map((a, i) => `<button type="button" class="choice ${i === 1 ? 'on' : ''}" data-val="${a.id}">${a.t}</button>`).join('')}</div>
-      <label>תסמינים? <span class="muted small">(השאירו ריק אם הכל תקין)</span></label>
-      <div class="symptoms">${SYMPTOMS.filter((s) => !s.hidden).map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
-      <div id="emergencyBox"></div>
-      <label for="lgNotes">הערות</label>
-      <textarea id="lgNotes" maxlength="200" placeholder="צורת הגשה, עם מה ערבבנו..."></textarea>
-      <div style="height:14px"></div>
-      <button class="btn block" type="submit">שמירה ✓</button>
+      <div class="choice-row" data-group="amount">${AMOUNTS.map((a) => `<button type="button" class="choice ${(edit?.amount || 'taste') === a.id ? 'on' : ''}" data-val="${a.id}">${a.t}</button>`).join('')}</div>
+      <div class="opt-rows">
+        <button type="button" class="opt-row" data-toggle="time">🕒 <span id="timeLbl">${isNow ? 'עכשיו' : new Date(edit.ts).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span><em>שינוי</em></button>
+        <div class="opt-body" data-body="time" hidden><input type="datetime-local" id="lgTime" value="${when.toISOString().slice(0, 16)}"></div>
+        <button type="button" class="opt-row warn" data-toggle="sym">⚠️ הייתה תגובה? <em>${hasSym ? 'כן' : 'הכל תקין'}</em></button>
+        <div class="opt-body" data-body="sym" ${hasSym ? '' : 'hidden'}>
+          <div class="symptoms">${SYMPTOMS.filter((s) => !s.hidden).map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}" ${edit?.symptoms?.includes(s.id) ? 'checked' : ''}>${s.t}</label>`).join('')}</div>
+          <div id="emergencyBox"></div>
+        </div>
+        <button type="button" class="opt-row" data-toggle="note">📝 הערה <em>${edit?.notes && !edit.seed ? esc(edit.notes) : 'הוספה'}</em></button>
+        <div class="opt-body" data-body="note" ${edit?.notes && !edit.seed ? '' : 'hidden'}><textarea id="lgNotes" maxlength="200" placeholder="צורת הגשה, עם מה ערבבנו...">${edit && !edit.seed ? esc(edit.notes || '') : ''}</textarea></div>
+      </div>
+      <div class="sheet-foot">
+        ${edit ? '<button type="button" class="btn ghost danger-text" id="lgDelete">🗑️ מחיקה</button>' : ''}
+        <button class="btn" type="submit">${edit ? 'שמירת שינויים' : 'שמירה ✓'}</button>
+      </div>
     </form>
   `, (b) => {
     $$('.choice-row', b).forEach((row) => row.addEventListener('click', (e) => {
       const c = e.target.closest('.choice'); if (!c) return;
-      $$('.choice', row).forEach((x) => x.classList.toggle('on', x === c));
+      const wasOn = c.classList.contains('on');
+      $$('.choice', row).forEach((x) => x.classList.toggle('on', x === c && !(wasOn && row.hasAttribute('data-optional'))));
     }));
-    $('.symptoms', b).addEventListener('change', () => {
+    $$('[data-toggle]', b).forEach((t) => t.onclick = () => {
+      const body = $(`[data-body="${t.dataset.toggle}"]`, b);
+      body.hidden = !body.hidden;
+      if (!body.hidden) body.querySelector('input,textarea')?.focus?.();
+    });
+    $('#lgTime', b).onchange = (e) => { $('#timeLbl', b).textContent = new Date(e.target.value).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+    const symBox = $('.symptoms', b);
+    const updSym = () => {
       const sel = $$('.symptoms input:checked', b).map((x) => x.value);
       const severe = sel.some((s) => SEVERE.includes(s));
+      $('[data-toggle="sym"] em', b).textContent = sel.length ? `${sel.length} סומנו` : 'הכל תקין';
       $('#emergencyBox', b).innerHTML = severe
-        ? `<div class="emergency">🚨 אלה סימנים של תגובה אלרגית חמורה אפשרית. אם הם מתרחשים עכשיו – <a href="tel:101">חייגו 101 מיד</a>. אם יש אפיפן – השתמשו בו.</div>`
-        : sel.length ? `<div class="warn-banner small">הפסיקו לתת את המזון, צלמו את התסמינים ופנו לרופא/ת הילדים. התזכורות לאלרגן זה יושהו.</div>` : '';
-    });
+        ? `<div class="emergency">🚨 אלה סימנים של תגובה אלרגית חמורה אפשרית. אם הם מתרחשים עכשיו: <a href="tel:101">חייגו 101 מיד</a>. אם יש אפיפן, השתמשו בו.</div>`
+        : sel.length ? `<div class="warn-banner small">הפסיקו לתת את המזון, צלמו את התסמינים ופנו לרופא/ת הילדים. התזכורות לאלרגן הזה יושהו.</div>` : '';
+    };
+    symBox.addEventListener('change', updSym);
+    if (hasSym) updSym();
+    $('#lgDelete', b)?.addEventListener('click', () => { closeModal(); deleteLog(edit.id); });
     $('#logForm', b).addEventListener('submit', (e) => {
       e.preventDefault();
-      const log = {
-        id: uid(), foodId,
-        ts: new Date($('#lgTime', b).value).getTime() || Date.now(),
+      const timeOpen = !$('[data-body="time"]', b).hidden;
+      const data = {
+        ts: timeOpen || edit ? (new Date($('#lgTime', b).value).getTime() || Date.now()) : Date.now(),
         liked: $('[data-group="liked"] .on', b)?.dataset.val,
         amount: $('[data-group="amount"] .on', b)?.dataset.val,
         symptoms: $$('.symptoms input:checked', b).map((x) => x.value),
         notes: $('#lgNotes', b).value.trim(),
       };
+      if (edit) {
+        Object.assign(edit, data, { seed: false });
+        save(); closeModal(); render();
+        return toast('השינויים נשמרו ✓');
+      }
+      const log = { id: uid(), foodId, ...data };
       state.logs.push(log);
-      save();
-      closeModal();
+      save(); closeModal(); render();
       const count = logsFor(foodId).length;
       if (log.symptoms.length) toast('נשמר. עקבו אחרי התסמינים והתייעצו עם רופא/ה 🩺');
-      else celebrate(foodIcon(f), count === 1 ? `טעימה ראשונה של ${f.name}! 🎉` : count === EXPOSURE_GOAL ? `${EXPOSURE_GOAL} טעימות! אלופים 🏆` : `טעימה מס׳ ${count} 👏`);
-      render();
+      else {
+        celebrate(foodIcon(f), count === 1 ? `טעימה ראשונה של ${f.name}! 🎉` : count === EXPOSURE_GOAL ? `${EXPOSURE_GOAL} טעימות! אלופים 🏆` : `טעימה מס׳ ${count} 👏`);
+        toast(`✓ ${f.name} נרשם`, [{ label: 'ביטול', fn: () => { state.logs = state.logs.filter((l) => l.id !== log.id); save(); render(); } }]);
+      }
     });
   });
 }
@@ -849,7 +1002,7 @@ function openAllergen(key) {
       <button class="btn ghost block" id="clearBtn">הרופא/ה אישר/ה להמשיך – חידוש מעקב</button>` : ''}
     <div class="card small">
       <b>יעד שבועי:</b> ${i.target} פעמים · <b>מקסימום הפסקה:</b> ${i.a.maxGap} ימים<br>
-      ${i.last ? `<b>חשיפה אחרונה:</b> ${relDay(i.last.ts)} · <b>השבוע:</b> ${i.weekCount}/${i.target}<br><b>סה״כ חשיפות:</b> ${i.tolerated.length}` : 'עוד לא נחשף/ה'}
+      ${i.last ? `<b>חשיפה אחרונה:</b> ${relDay(i.last.ts)} · <b>השבוע:</b> ${i.weekCount}/${i.target}<br><b>סה״כ חשיפות:</b> ${i.tolerated.length}` : G('עוד לא נחשף·ה')}
     </div>
     <div class="card small">🍽️ <b>איך מגישים:</b> ${esc(i.a.how)}${i.a.note ? `<br><br>📌 ${esc(i.a.note)}` : ''}</div>
     <h3 class="section-title">בחרו מוצר לרישום</h3>
@@ -861,7 +1014,7 @@ function openAllergen(key) {
   });
 }
 
-function openAddFood() {
+function openAddFood(prefill = '') {
   const emojis = ['🍽️', '🥗', '🍲', '🥞', '🧆', '🥟', '🍜', '🫓', '🥯', '🧇', '🍪', '🫒', '🥥', '🍍', '🍋', '🥜', '🌶️', '🥘'];
   const anims = Object.keys(MOTION_DUR);
   const fxs = ['sparkle', 'hearts', 'juice', 'steam', 'leaves', 'seeds', 'bubbles', 'crumbs', 'swirl', 'pop', 'zest', 'shine', 'smell', 'drizzle', 'snow'];
@@ -870,7 +1023,7 @@ function openAddFood() {
     <h2 style="margin-bottom:6px">✨ מוצר חדש</h2>
     <form class="form" id="addForm">
       <label for="afName">שם המוצר</label>
-      <input type="text" id="afName" required maxlength="30" placeholder="למשל: שקשוקה">
+      <input type="text" id="afName" required maxlength="30" placeholder="למשל: שקשוקה" value="${esc(prefill)}">
       <label>אימוג׳י</label>
       <div class="choice-row" data-group="emoji">${emojis.map((e, n) => `<button type="button" class="choice ${n ? '' : 'on'}" data-val="${e}" style="flex:0 0 52px"><span class="ce">${e}</span></button>`).join('')}</div>
       <label>אנימציה</label>
@@ -922,8 +1075,10 @@ function openSettings() {
     <form class="form" id="setForm">
       <label for="stParent">השם שלך</label>
       <input type="text" id="stParent" value="${esc(state.parent?.name)}" maxlength="30">
-      <label for="stName">שם הילד/ה</label>
+      <label for="stName">שם התינוק</label>
       <input type="text" id="stName" value="${esc(state.baby?.name)}" maxlength="30">
+      <label for="stGender">בן או בת</label>
+      <select id="stGender"><option value="">לא צוין</option><option value="m" ${state.baby?.gender === 'm' ? 'selected' : ''}>💙 בן</option><option value="f" ${state.baby?.gender === 'f' ? 'selected' : ''}>💗 בת</option></select>
       <label for="stBirth">תאריך לידה</label>
       <input type="date" id="stBirth" value="${esc(state.baby?.birth)}">
       <h3 class="section-title">⭐ אלרגנים ויעדים שבועיים</h3>
@@ -955,7 +1110,7 @@ function openSettings() {
   `, (b) => {
     $('#setForm', b).addEventListener('submit', async (e) => {
       e.preventDefault();
-      state.baby = { name: $('#stName', b).value.trim() || state.baby.name, birth: $('#stBirth', b).value || state.baby.birth };
+      state.baby = { name: $('#stName', b).value.trim() || state.baby.name, birth: $('#stBirth', b).value || state.baby.birth, gender: $('#stGender', b).value };
       state.parent = { name: $('#stParent', b).value.trim() || state.parent?.name || '' };
       s.disabled = $$('[data-en]', b).filter((x) => !x.checked).map((x) => x.dataset.en);
       $$('[data-target]', b).forEach((x) => {
@@ -1095,10 +1250,18 @@ function celebrate(emoji, msg) {
 }
 
 let toastTimer;
-function toast(msg) {
+// הודעה קצרה בתחתית, אפשר עם כפתורי פעולה (למשל "ביטול")
+function toast(msg, actions = []) {
   const t = $('#toast');
-  t.textContent = msg;
+  t.innerHTML = `<span>${esc(msg)}</span>${actions.map((a, i) => `<button data-ti="${i}">${esc(a.label)}</button>`).join('')}`;
+  t.classList.toggle('has-actions', actions.length > 0);
+  t.onclick = (e) => {
+    const b = e.target.closest('[data-ti]');
+    if (!b) return;
+    t.classList.remove('show');
+    actions[+b.dataset.ti].fn();
+  };
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  toastTimer = setTimeout(() => t.classList.remove('show'), actions.length ? 5500 : 2600);
 }

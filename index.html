@@ -26,7 +26,10 @@
         <p id="babyLine" class="sub"></p>
       </div>
     </div>
-    <button class="icon-btn" id="settingsBtn" aria-label="הגדרות">⚙️</button>
+    <div class="top-actions">
+      <button class="icon-btn" id="tipsBtn" aria-label="טיפים ומדריך">💡</button>
+      <button class="icon-btn" id="settingsBtn" aria-label="הגדרות ופרופיל">⚙️</button>
+    </div>
   </header>
 
   <main id="view" class="view" tabindex="-1"></main>
@@ -34,15 +37,15 @@
   <nav class="tabbar" aria-label="ניווט ראשי">
     <button data-tab="home" class="active"><span>🏠</span>בית</button>
     <button data-tab="foods"><span>🥕</span>מוצרים</button>
+    <button class="fab" id="fabBtn" aria-label="רישום טעימה"><span class="fab-in">＋</span><em>טעימה</em></button>
     <button data-tab="allergens"><span>⭐</span>אלרגנים</button>
     <button data-tab="recipes"><span>🍲</span>מתכונים</button>
-    <button data-tab="journal"><span>📖</span>יומן</button>
-    <button data-tab="guide"><span>💡</span>טיפים</button>
   </nav>
 
   <div id="modal" class="modal" hidden>
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="sheet-handle" aria-hidden="true"></div>
       <button class="modal-x" data-close aria-label="סגירה">✕</button>
       <div id="modalBody"></div>
     </div>

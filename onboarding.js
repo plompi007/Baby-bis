@@ -69,8 +69,8 @@ function bindAuth() {
 /* ===================== שאלון פתיחה ===================== */
 const EXPOSURE_OPTS = [
   { id: 'none', t: 'עוד לא' },
-  { id: 'tried', t: 'טעם/ה' },
-  { id: 'regular', t: 'אוכל/ת קבוע' },
+  { id: 'tried', t: 'טעם·ה' },
+  { id: 'regular', t: 'אוכל·ת קבוע' },
   { id: 'reaction', t: 'הייתה תגובה' },
 ];
 
@@ -85,6 +85,7 @@ function startWizard() {
     steps, i: 0,
     parent: state.parent?.name || '',
     babyName: state.baby?.name || '',
+    gender: state.baby?.gender || '',
     birth: state.baby?.birth || '',
     avatar: state.avatar ? { ...state.avatar } : null,
     exposures: {},
@@ -134,10 +135,15 @@ function bindParent() {
 function stepBaby() {
   return `
     <span class="wz-emoji anim-bounce">👶</span>
-    <h2>ספרי לנו על הקטן/ה</h2>
+    <h2>בואי נכיר את הקטנטנים</h2>
     <form class="form card" id="wzForm">
-      <label for="wzBaby">שם הילד/ה</label>
+      <label for="wzBaby">איך קוראים לתינוק?</label>
       <input type="text" id="wzBaby" required maxlength="30" value="${esc(wizard.babyName)}" placeholder="למשל: נועם">
+      <label>בן או בת? <span class="muted small">(כדי שנדבר נכון)</span></label>
+      <div class="choice-row gender" data-group="gender">
+        <button type="button" class="choice ${wizard.gender === 'm' ? 'on' : ''}" data-val="m"><span class="ce">💙</span>בן</button>
+        <button type="button" class="choice ${wizard.gender === 'f' ? 'on' : ''}" data-val="f"><span class="ce">💗</span>בת</button>
+      </div>
       <label for="wzBirth">תאריך לידה</label>
       <input type="date" id="wzBirth" required max="${new Date().toISOString().slice(0, 10)}" value="${esc(wizard.birth)}">
       <div class="wz-age" id="wzAge"></div>
@@ -151,6 +157,12 @@ function bindBaby() {
     $('#wzAge').innerHTML = b && ageText(b) ? `🎂 גיל: <b>${ageText(b)}</b>` : '';
   };
   $('#wzBirth').oninput = upd; upd();
+  $('[data-group="gender"]').onclick = (e) => {
+    const c = e.target.closest('.choice'); if (!c) return;
+    wizard.gender = c.dataset.val;
+    state.baby = Object.assign(state.baby || {}, { gender: wizard.gender });
+    $$('[data-group="gender"] .choice').forEach((x) => x.classList.toggle('on', x === c));
+  };
   if (!wizard.babyName) $('#wzBaby').focus();
   $('#wzForm').onsubmit = (e) => {
     e.preventDefault();
@@ -178,9 +190,9 @@ function stepAllergens() {
   const age = wizard.birth ? (Date.now() - new Date(wizard.birth)) / (30.44 * DAY) : 6;
   return `
     <span class="wz-emoji anim-pulse">⭐</span>
-    <h2>למה ${esc(wizard.babyName)} כבר נחשף/ה?</h2>
+    <h2>${G(`למה ${esc(wizard.babyName)} כבר נחשף·ה?`)}</h2>
     <p class="muted">כך לא תצטרכו להזין הכל מההתחלה. אפשר לשנות בכל רגע.</p>
-    ${age < 4 ? `<div class="card small">👶 ${esc(wizard.babyName)} עוד צעיר/ה למוצקים – אפשר פשוט לדלג.</div>` : ''}
+    ${age < 4 ? `<div class="card small">👶 ${G(`${esc(wizard.babyName)} עוד צעיר·ה למוצקים, אפשר פשוט לדלג.`)}</div>` : ''}
     <div class="exp-list">
       ${activeAllergens().map((k) => [k, ALLERGENS[k]]).map(([k, a]) => `
         ${nutHeader(activeAllergens(), k, '<h3 class="section-title" style="margin:8px 0 0">🌰 אגוזים <span class="small muted" style="font-weight:400">– כל אחד בנפרד</span></h3>')}
@@ -188,7 +200,7 @@ function stepAllergens() {
           <div class="exp-name"><span class="anim-float" style="display:inline-block">${allergenIcon(k)}</span> ${a.name}
             ${k === 'milk' ? '<small class="muted">(גם תמ״ל רגיל נחשב)</small>' : ''}${k === 'peanut' ? '<small class="muted">(כולל במבה)</small>' : ''}</div>
           <div class="exp-opts" data-al="${k}">
-            ${EXPOSURE_OPTS.map((o) => `<button type="button" class="exp-opt ${(wizard.exposures[k] || 'none') === o.id ? 'on' : ''} o-${o.id}" data-v="${o.id}">${o.t}</button>`).join('')}
+            ${EXPOSURE_OPTS.map((o) => `<button type="button" class="exp-opt ${(wizard.exposures[k] || 'none') === o.id ? 'on' : ''} o-${o.id}" data-v="${o.id}">${G(o.t)}</button>`).join('')}
           </div>
         </div>`).join('')}
     </div>
@@ -209,7 +221,7 @@ function stepFoods() {
   const cats = CATEGORIES.filter((c) => !['allergen', 'custom'].includes(c.id));
   return `
     <span class="wz-emoji anim-wiggle">🥕</span>
-    <h2>ומה ${esc(wizard.babyName)} כבר טעם/ה?</h2>
+    <h2>${G(`ומה ${esc(wizard.babyName)} כבר טעמ·ה?`)}</h2>
     <p class="muted">סמנו את מה שכבר טעם. לא חייבים לזכור הכל 🙂</p>
     <div class="wz-count" id="wzCount"></div>
     ${cats.map((c) => {
@@ -254,7 +266,7 @@ function bindDone() {
   $('#wzFinish').onclick = () => {
     const w = wizard;
     state.parent = { name: w.parent };
-    state.baby = { name: w.babyName, birth: w.birth };
+    state.baby = { name: w.babyName, birth: w.birth, gender: w.gender || '' };
     state.avatar = w.avatar || { emoji: '👶', frame: FRAMES[0] };
     seedExposures(w.exposures, [...w.foods]);
     state.onboarded = true;

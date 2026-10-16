@@ -424,7 +424,7 @@ details.guide li { margin-bottom: 6px; }
 .profile-card > div { flex: 1; }
 
 /* מסכי כניסה ושאלון – בלי ניווט */
-body.gate .tabbar, body.gate #settingsBtn { display: none; }
+body.gate .tabbar, body.gate #settingsBtn, body.gate #tipsBtn { display: none; }
 body.gate { padding-bottom: 0; }
 
 /* ===== התחברות ===== */
@@ -512,3 +512,140 @@ body.gate { padding-bottom: 0; }
 /* איורי מוצרים (SVG) – מתנהגים כמו אימוג׳י */
 .fi { display: inline-block; width: 1.25em; height: 1.25em; margin: -0.125em; vertical-align: -0.2em; overflow: visible; }
 .celebrate .p .fi { width: 1em; height: 1em; margin: 0; }
+
+/* =====================================================================
+   ליטוש UX – גרסה 2
+   ===================================================================== */
+body { font-size: 16px; line-height: 1.45; }
+.view { padding-bottom: 36px; }
+.top-actions { display: flex; gap: 8px; align-items: center; }
+#tipsBtn.on { background: var(--primary); color: #fff; }
+#settingsBtn { padding: 0; }
+
+/* סרגל תחתון עם כפתור ＋ מרכזי */
+.tabbar { grid-template-columns: repeat(5, 1fr); }
+.tabbar .fab { color: var(--ink); }
+.tabbar .fab .fab-in {
+  width: 60px; height: 60px; margin-top: -30px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 32px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--primary), #ff6f8e 55%, var(--accent));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 45%, transparent), 0 0 0 5px var(--card);
+  transition: transform .2s cubic-bezier(.3,1.6,.5,1);
+}
+.tabbar .fab em { font-style: normal; font-size: 11px; font-weight: 700; margin-top: 2px; }
+.tabbar .fab:active .fab-in { transform: scale(.9) rotate(90deg); }
+
+/* כרטיס פתיחה */
+.hero { background: linear-gradient(140deg, #ffb199 0%, #ff8a65 40%, #b08cff 100%); color: #fff; border-radius: 26px; padding: 18px 16px 14px; margin-bottom: 14px; box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 30%, transparent); position: relative; overflow: hidden; }
+.hero::after { content: ''; position: absolute; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,.12); top: -70px; left: -50px; }
+.hero-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; position: relative; z-index: 1; }
+.hero-hello { margin: 0; font-size: 15px; opacity: .92; }
+.hero h2 { font-size: 26px; font-weight: 800; margin-top: 2px; }
+.hero h2 span { font-size: 15px; font-weight: 500; opacity: .9; }
+.hero .hero-avatar { position: static; animation: float 4s ease-in-out infinite; }
+.hero h2, .hero > p { padding-inline-end: 0; }
+.week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 14px 0 10px; position: relative; z-index: 1; }
+.wday { text-align: center; font-size: 12px; opacity: .95; }
+.wday i { display: grid; place-items: center; margin: 4px auto 0; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.18); font-style: normal; font-weight: 800; font-size: 13px; }
+.wday.has i { background: #fff; color: var(--primary); }
+.wday.today i { box-shadow: 0 0 0 2px #fff; }
+.hero .stats { margin-top: 6px; gap: 8px; position: relative; z-index: 1; }
+.hero .stat { padding: 8px 4px; border-radius: 14px; }
+.hero .stat b { font-size: 20px; }
+
+.card.soft { box-shadow: none; border: 1px solid var(--line); }
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.card-head h3 { font-size: 17px; font-weight: 800; }
+.pill { background: var(--primary); color: #fff; font-weight: 800; font-size: 13px; min-width: 24px; height: 24px; border-radius: 12px; display: grid; place-items: center; padding: 0 6px; }
+
+/* "מה כדאי לתת היום" */
+.today .reminder { box-shadow: none; border-radius: 0; margin: 0; padding: 12px 2px; background: none; border-inline-start: 0; border-bottom: 1px solid var(--line); }
+.today .reminder:last-child { border-bottom: 0; }
+.today .reminder.overdue .r-text b::after { content: ' • דחוף'; color: var(--red); font-size: 12px; }
+.today-done { text-align: center; padding: 10px 0 4px; }
+.today-done .e-emoji { font-size: 40px; display: inline-block; animation: float 3s ease-in-out infinite; }
+.today-done p { margin: 4px 0 0; color: var(--muted); }
+.reminder .r-emoji { font-size: 30px; width: 44px; text-align: center; }
+.reminder .r-text small { display: block; line-height: 1.35; }
+.check-btn { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 2.5px solid var(--green); background: color-mix(in srgb, var(--green) 10%, var(--card)); color: var(--green); font-size: 22px; font-weight: 900; transition: transform .15s, background .2s; }
+.check-btn:active { transform: scale(.85); background: var(--green); color: #fff; }
+.big-cta { margin: 4px 0 6px; font-size: 18px; padding: 16px; }
+
+.section-row { display: flex; align-items: baseline; justify-content: space-between; }
+.see-all { color: var(--accent); font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+.card.list { padding: 2px 4px; }
+.log { width: 100%; border: 0; background: none; text-align: start; border-bottom: 1px solid var(--line); border-radius: 0; }
+.card.list .log:last-child { border-bottom: 0; }
+button.log { cursor: pointer; }
+button.log:active { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.log .l-main b { font-weight: 700; }
+.mini-star { font-size: 12px; }
+
+/* מסך המוצרים: סינון דביק */
+.filter-bar { position: sticky; top: calc(66px + env(safe-area-inset-top)); z-index: 6; margin: 0 -16px; padding: 4px 16px 8px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); }
+.filter-bar .search { margin-bottom: 8px; }
+.chips.sub { margin-top: 6px; align-items: center; }
+.count-note { margin-inline-start: auto; font-size: 12px; color: var(--muted); white-space: nowrap; padding-inline-start: 8px; }
+.chip { min-height: 38px; }
+.food.untried .f-emoji { filter: grayscale(.55); opacity: .72; }
+
+/* מסך האלרגנים */
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+.summary div { background: var(--card); border-radius: 18px; padding: 10px; text-align: center; box-shadow: var(--shadow); }
+.summary b { display: block; font-size: 24px; font-weight: 800; }
+.summary span { font-size: 12px; color: var(--muted); }
+.summary div:nth-child(1) b { color: var(--green); }
+.summary div:nth-child(2) b { color: var(--accent); }
+details.why { margin-top: 18px; }
+
+/* כותרת משנה עם חזרה */
+.subhead { display: flex; align-items: center; gap: 10px; margin: 2px 0 12px; }
+.subhead h2 { font-size: 22px; font-weight: 800; }
+.back-btn { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--card); box-shadow: var(--shadow); font-size: 18px; }
+
+/* גיליונות (מודאל) */
+.modal-card { padding-top: 26px; }
+.sheet-handle { position: absolute; top: 8px; left: 50%; width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: var(--line); }
+.sheet-title { font-size: 22px; font-weight: 800; margin: 0 0 12px; padding-inline-end: 40px; }
+.sheet-foot { position: sticky; bottom: calc(-24px - env(safe-area-inset-bottom)); display: flex; gap: 10px; margin: 16px -18px calc(-24px - env(safe-area-inset-bottom)); padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 22%); z-index: 3; }
+.sheet-foot .btn { flex: 1; padding: 14px; font-size: 17px; }
+.danger-text { color: var(--red) !important; }
+
+/* טופס טעימה מקוצר */
+.log-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; padding-inline-end: 40px; }
+.log-head .stage.mini { width: 90px; height: 90px; flex: none; margin: 0; }
+.log-head h2 { font-size: 24px; font-weight: 800; }
+.choice-row.reactions .choice { padding: 10px 2px; }
+.choice-row.reactions .ce { font-size: 34px; }
+.choice-row.gender .choice { flex: 0 1 120px; }
+.opt-rows { margin-top: 16px; display: grid; gap: 8px; }
+.opt-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 13px 14px; border-radius: 16px; border: 2px solid var(--line); background: var(--card); text-align: start; font-weight: 500; }
+.opt-row em { margin-inline-start: auto; font-style: normal; color: var(--muted); font-size: 14px; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opt-row.warn { color: var(--ink); }
+.opt-body { padding: 4px 2px 6px; }
+
+/* חלון בחירת מוצר */
+.pk-head { font-size: 15px; font-weight: 700; margin: 16px 0 8px; }
+.pick-row { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: none; }
+.pick-row::-webkit-scrollbar { display: none; }
+.pick-tile { flex: none; width: 86px; border: 0; background: var(--card); border-radius: 18px; padding: 10px 4px 8px; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 4px; transition: transform .15s; }
+.pick-tile:active { transform: scale(.93); }
+.pick-tile span { font-size: 36px; display: inline-block; line-height: 1.1; }
+.pick-tile b { font-size: 12px; font-weight: 500; line-height: 1.2; text-align: center; }
+.pick-tile.is-allergen { outline: 2px dashed color-mix(in srgb, var(--allergen) 70%, transparent); outline-offset: -4px; }
+.pick-grid-all { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 10px; margin-top: 10px; }
+.pick-grid-all .pick-tile { width: auto; }
+.recipe-link { display: block; width: 100%; margin-top: 12px; padding: 12px 14px; border-radius: 16px; border: 2px dashed var(--line); background: none; text-align: start; color: var(--accent); font-weight: 500; }
+
+/* הודעה עם פעולות */
+.toast { display: flex; align-items: center; gap: 10px; border-radius: 18px; padding: 12px 16px; }
+.toast.show { pointer-events: auto; }
+.toast button { border: 0; background: none; color: #ffb199; font-weight: 800; padding: 4px 6px; }
+.toast.has-actions { min-width: 280px; justify-content: space-between; }
+
+@media (prefers-color-scheme: dark) {
+  .toast button { color: var(--primary); }
+  .filter-bar { background: color-mix(in srgb, var(--bg) 92%, transparent); }
+}
+
+.recipe-link { font-size: 15px; }
