@@ -1,11 +1,14 @@
 'use strict';
 
 /* ===================== מצב ושמירה ===================== */
-const STORE_KEY = 'bis-rishon-v1';
+// הנתונים נשמרים לכל חשבון בנפרד (ראו auth.js)
 const DAY = 86400000;
 const EXPOSURE_GOAL = 10; // מספר טעימות "הוגן" לפי מחקרי חשיפה חוזרת (8–10+)
 
 const defaultState = () => ({
+  onboarded: false,           // האם השאלון הראשוני הושלם
+  parent: null,               // { name }
+  avatar: null,               // { img (dataURL) | emoji, frame, sticker }
   baby: null,                 // { name, birth }
   logs: [],                   // { id, foodId, ts, liked, amount, symptoms:[], notes }
   customFoods: [],
@@ -15,18 +18,23 @@ const defaultState = () => ({
   settings: { disabled: ['shellfish'], targets: {}, notify: false, lastNotified: '' },
 });
 
-let state = load();
+let currentUser = null;
+let state = defaultState();
 
-function load() {
+function load(userId) {
+  currentUser = userId;
+  state = defaultState();
+  if (!userId) return state;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) return Object.assign(defaultState(), JSON.parse(raw));
+    const raw = localStorage.getItem(Auth.dataKey(userId));
+    if (raw) state = Object.assign(defaultState(), JSON.parse(raw));
   } catch (e) { /* אחסון חסום – נעבוד בזיכרון */ }
-  return defaultState();
+  return state;
 }
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-  catch (e) { toast('לא ניתן לשמור במכשיר זה 😕'); }
+  if (!currentUser) return;
+  try { localStorage.setItem(Auth.dataKey(currentUser), JSON.stringify(state)); }
+  catch (e) { toast('לא ניתן לשמור במכשיר זה (אולי התמונה גדולה מדי) 😕'); }
 }
 
 /* ===================== עזרים ===================== */
@@ -64,6 +72,7 @@ const SYMPTOMS = [
   { id: 'breathing', t: 'קושי נשימה / צפצופים', severe: true },
   { id: 'lethargy',  t: 'רפיון / חיוורון', severe: true },
   { id: 'repeatvomit', t: 'הקאות חוזרות', severe: true },
+  { id: 'past', t: 'תגובה שדווחה בשאלון', hidden: true },
 ];
 const SEVERE = SYMPTOMS.filter((s) => s.severe).map((s) => s.id);
 
@@ -192,8 +201,12 @@ function go(t) {
 
 function render() {
   const v = $('#view');
-  $('#babyLine').textContent = state.baby ? `${state.baby.name} · ${ageText(state.baby.birth)}` : 'מעקב טעימות ואלרגנים';
-  if (!state.baby) { v.innerHTML = onboardingHTML(); bindOnboarding(); updateBadge(); return; }
+  const gated = !currentUser || !state.onboarded;
+  document.body.classList.toggle('gate', gated);
+  $('#babyLine').textContent = state.baby && !gated ? `${state.baby.name} · ${ageText(state.baby.birth)}` : 'מעקב טעימות ואלרגנים';
+  $('#settingsBtn').innerHTML = !gated && state.avatar ? avatarHTML(44) : '⚙️';
+  if (!currentUser) { v.innerHTML = authHTML(); bindAuth(); return; }
+  if (!state.onboarded) { renderWizard(); return; }
   v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
   const views = { home: homeHTML, foods: foodsHTML, allergens: allergensHTML, recipes: recipesHTML, journal: journalHTML, guide: tipsHTML };
   v.innerHTML = views[tab]();
@@ -204,47 +217,20 @@ function render() {
 function updateBadge() {
   const btn = $('.tabbar [data-tab="allergens"]');
   $('.dot', btn)?.remove();
-  if (!state.baby) return;
+  if (!currentUser || !state.onboarded) return;
   const n = reminders().filter((r) => r.kind !== 'new').length;
   if (n) btn.insertAdjacentHTML('beforeend', `<b class="dot">${n}</b>`);
 }
 
 /* ===================== מסכים ===================== */
-function onboardingHTML() {
-  return `
-  <div class="onboard">
-    <span class="big">🥑</span>
-    <h2>ברוכים הבאים ל״ביס ראשון״!</h2>
-    <p class="muted">מעקב אחר כל טעימה, סימון אלרגנים ותזכורות לשמירה על חשיפה קבועה.</p>
-    <form class="card form" id="onboardForm">
-      <label for="obName">איך קוראים לתינוק/ת?</label>
-      <input type="text" id="obName" required maxlength="30" placeholder="למשל: נועה">
-      <label for="obBirth">תאריך לידה</label>
-      <input type="date" id="obBirth" required max="${new Date().toISOString().slice(0, 10)}">
-      <div style="height:16px"></div>
-      <button class="btn block" type="submit">יאללה מתחילים! 🎉</button>
-    </form>
-    <p class="small muted">⚕️ האפליקציה היא כלי מעקב ומידע כללי, ואינה תחליף לייעוץ רפואי.</p>
-  </div>`;
-}
-function bindOnboarding() {
-  $('#onboardForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    state.baby = { name: $('#obName').value.trim(), birth: $('#obBirth').value };
-    save();
-    celebrate('🎉', `שלום ${state.baby.name}!`);
-    render();
-  });
-}
-
 function homeHTML() {
   const triedIds = new Set(state.logs.map((l) => l.foodId));
   const triedCount = [...triedIds].filter((id) => foodById(id)).length;
   const allergenDone = activeAllergens().filter((k) => ['maintaining', 'introducing'].includes(allergenInfo(k).status)).length;
-  const weekLogs = state.logs.filter((l) => Date.now() - l.ts < 7 * DAY).length;
+  const weekLogs = state.logs.filter((l) => !l.seed && Date.now() - l.ts < 7 * DAY).length;
   const rems = reminders();
   const age = ageMonths();
-  const recent = [...state.logs].sort((a, b) => b.ts - a.ts).slice(0, 4);
+  const recent = state.logs.filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).slice(0, 4);
   const heroEmojis = ['🥑', '🍌', '🥕', '🍓', '🥦', '🍠'];
   const heroEmoji = heroEmojis[new Date().getDate() % heroEmojis.length];
 
@@ -253,9 +239,9 @@ function homeHTML() {
 
   return `
   <section class="card hero">
-    <h2>היי ${esc(babyName())}! 👋</h2>
+    <h2>היי ${esc(state.parent?.name || babyName())}! 👋</h2>
     <p>${greetingLine()}</p>
-    <span class="hero-emoji">${heroEmoji}</span>
+    ${state.avatar ? `<span class="hero-avatar">${avatarHTML(66)}</span>` : `<span class="hero-emoji">${heroEmoji}</span>`}
     <div class="stats">
       <div class="stat"><b>${triedCount}</b><span>מוצרים נטעמו</span></div>
       <div class="stat"><b>${allergenDone}/${activeAllergens().length}</b><span>אלרגנים הוכרו</span></div>
@@ -277,7 +263,7 @@ function homeHTML() {
 function greetingLine() {
   const h = new Date().getHours();
   if (h < 11) return 'בוקר טוב! בוקר הוא זמן מצוין להכיר אלרגן חדש ☀️';
-  if (h < 16) return 'צהריים טובים! מה טועמים היום?';
+  if (h < 16) return `צהריים טובים! מה ${esc(babyName())} טועמ/ת היום?`;
   if (h < 20) return 'ערב טוב! אלרגנים חדשים – עדיף להשאיר למחר בבוקר 🌙';
   return 'לילה טוב! נתראה מחר עם טעמים חדשים ✨';
 }
@@ -403,7 +389,7 @@ function logHTML(l, withDelete) {
     <span class="l-emoji">${f.emoji}</span>
     <div class="l-main">
       <b>${esc(f.name)} ${f.allergen ? '⭐' : ''}</b>
-      <small>${withDelete ? time : relDay(l.ts)}${a ? ' · ' + a.t : ''}${sym.length ? ' · ⚠️ ' + esc(sym.join(', ')) : ''}${l.notes ? ' · ' + esc(l.notes) : ''}</small>
+      <small>${l.seed ? '📋 מהשאלון הראשוני' : withDelete ? time : relDay(l.ts)}${a ? ' · ' + a.t : ''}${sym.length ? ' · ⚠️ ' + esc(sym.join(', ')) : ''}${l.notes && !l.seed ? ' · ' + esc(l.notes) : ''}</small>
     </div>
     <span class="l-react">${r ? r.e : ''}</span>
     ${withDelete ? `<button class="l-del" data-del="${l.id}" aria-label="מחיקה">🗑️</button>` : ''}
@@ -668,7 +654,7 @@ function openRecipeLog(r) {
       <label>איך היה?</label>
       <div class="choice-row" data-group="liked">${REACTIONS.map((x, i) => `<button type="button" class="choice ${i === 1 ? 'on' : ''}" data-val="${x.id}"><span class="ce">${x.e}</span>${x.t}</button>`).join('')}</div>
       <label>תסמינים? <span class="muted small">(השאירו ריק אם הכל תקין)</span></label>
-      <div class="symptoms sym-pick">${SYMPTOMS.map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
+      <div class="symptoms sym-pick">${SYMPTOMS.filter((s) => !s.hidden).map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
       <div id="emergencyBox"></div>
       <div style="height:14px"></div>
       <button class="btn block" type="submit">שמירה ✓</button>
@@ -788,7 +774,7 @@ function openLog(foodId) {
       <label>כמה?</label>
       <div class="choice-row" data-group="amount">${AMOUNTS.map((a, i) => `<button type="button" class="choice ${i === 1 ? 'on' : ''}" data-val="${a.id}">${a.t}</button>`).join('')}</div>
       <label>תסמינים? <span class="muted small">(השאירו ריק אם הכל תקין)</span></label>
-      <div class="symptoms">${SYMPTOMS.map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
+      <div class="symptoms">${SYMPTOMS.filter((s) => !s.hidden).map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
       <div id="emergencyBox"></div>
       <label for="lgNotes">הערות</label>
       <textarea id="lgNotes" maxlength="200" placeholder="צורת הגשה, עם מה ערבבנו..."></textarea>
@@ -901,8 +887,15 @@ function openSettings() {
   const notifSupported = 'Notification' in window;
   openModal(`
     <h2 style="margin-bottom:6px">⚙️ הגדרות</h2>
+    <div class="profile-card">
+      ${avatarHTML(72)}
+      <div><b>${esc(state.parent?.name || '')}</b><div class="small muted">${esc(Auth.emailOf(currentUser))}</div></div>
+      <button class="btn small ghost" id="avatarBtn">📷 אווטאר</button>
+    </div>
     <form class="form" id="setForm">
-      <label for="stName">שם</label>
+      <label for="stParent">השם שלך</label>
+      <input type="text" id="stParent" value="${esc(state.parent?.name)}" maxlength="30">
+      <label for="stName">שם הילד/ה</label>
       <input type="text" id="stName" value="${esc(state.baby?.name)}" maxlength="30">
       <label for="stBirth">תאריך לידה</label>
       <input type="date" id="stBirth" value="${esc(state.baby?.birth)}">
@@ -927,11 +920,15 @@ function openSettings() {
       <label class="btn ghost" style="text-align:center">ייבוא<input type="file" id="importInput" accept="application/json" hidden></label>
     </div>
     <p class="small muted">הנתונים נשמרים רק במכשיר הזה. מומלץ לגבות מדי פעם.</p>
-    <button class="btn danger block" id="resetBtn" style="margin-top:20px">מחיקת כל הנתונים</button>
+    <h3 class="section-title">👤 חשבון</h3>
+    <button class="btn ghost block" id="logoutBtn">🚪 התנתקות</button>
+    <button class="btn danger block" id="resetBtn" style="margin-top:12px">מחיקת כל הנתונים והתחלה מחדש</button>
+    <button class="btn ghost block" id="delAccBtn" style="margin-top:12px;color:var(--red)">מחיקת החשבון מהמכשיר</button>
   `, (b) => {
     $('#setForm', b).addEventListener('submit', async (e) => {
       e.preventDefault();
       state.baby = { name: $('#stName', b).value.trim() || state.baby.name, birth: $('#stBirth', b).value || state.baby.birth };
+      state.parent = { name: $('#stParent', b).value.trim() || state.parent?.name || '' };
       s.disabled = $$('[data-en]', b).filter((x) => !x.checked).map((x) => x.dataset.en);
       $$('[data-target]', b).forEach((x) => {
         const v = Math.max(1, Math.min(7, parseInt(x.value, 10) || 1));
@@ -953,6 +950,12 @@ function openSettings() {
       if (!confirm('למחוק את כל הנתונים? לא ניתן לבטל.')) return;
       state = defaultState(); save(); closeModal(); go('home');
     };
+    $('#avatarBtn', b).onclick = openAvatarModal;
+    $('#logoutBtn', b).onclick = () => { Auth.logout(); load(null); closeModal(); go('home'); toast('התנתקת. להתראות 👋'); };
+    $('#delAccBtn', b).onclick = () => {
+      if (!confirm('למחוק את החשבון ואת כל הנתונים שלו מהמכשיר? לא ניתן לבטל.')) return;
+      Auth.deleteAccount(currentUser); load(null); closeModal(); go('home');
+    };
   });
 }
 
@@ -973,7 +976,7 @@ function importData(file) {
       const data = JSON.parse(r.result);
       if (!Array.isArray(data.logs)) throw new Error('bad');
       if (!confirm('הייבוא יחליף את הנתונים הנוכחיים. להמשיך?')) return;
-      state = Object.assign(defaultState(), data);
+      state = Object.assign(defaultState(), data, { onboarded: true });
       save(); closeModal(); go('home'); toast('יובא בהצלחה ✓');
     } catch { toast('קובץ לא תקין'); }
   };
@@ -1019,7 +1022,7 @@ function downloadICS() {
 /* ===================== התראות ===================== */
 async function maybeNotify(force) {
   const s = state.settings;
-  if (!s.notify || !('Notification' in window) || Notification.permission !== 'granted' || !state.baby) return;
+  if (!currentUser || !state.onboarded || !s.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
   const today = new Date().toDateString();
   if (!force && s.lastNotified === today) return;
   if (new Date().getHours() < 8) return;
@@ -1055,7 +1058,9 @@ function celebrate(emoji, msg) {
   }
   const m = document.createElement('div');
   m.className = 'msg';
-  m.innerHTML = `<span class="m-emoji">${emoji}</span>${esc(msg)}`;
+  m.innerHTML = state.avatar && currentUser
+    ? `<span class="m-av">${avatarHTML(84)}<span class="m-food">${emoji}</span></span>${esc(msg)}`
+    : `<span class="m-emoji">${emoji}</span>${esc(msg)}`;
   c.appendChild(m);
   navigator.vibrate?.(30);
   setTimeout(() => { c.innerHTML = ''; }, 1900);
@@ -1069,12 +1074,3 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
-
-/* ===================== הפעלה ===================== */
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
-render();
-maybeNotify();
-setInterval(() => { maybeNotify(); if ($('#modal').hidden) updateBadge(); }, 30 * 60 * 1000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { maybeNotify(); render(); } });
