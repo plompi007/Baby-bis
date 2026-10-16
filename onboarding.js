@@ -400,6 +400,88 @@ function seedExposures(exposures, foodIds) {
 }
 
 /* ===================== עורך אווטאר ===================== */
+/* ---------- אווטאר מצויר עם Gemini (חינם, דרך החשבון של ההורה) ---------- */
+const AI_STYLES = [
+  { id: '3d', e: '🎬', he: 'תלת־ממד', en: '3D animation', d: L('כמו בסרטי אנימציה', 'Like an animated movie'),
+    p: 'a 3D animated movie character: soft rounded features, big expressive eyes, smooth stylized skin, warm cinematic lighting, high-quality 3D render' },
+  { id: 'water', e: '🎨', he: 'צבעי מים', en: 'Watercolor', d: L('איור של ספר ילדים', 'Storybook illustration'),
+    p: "a gentle watercolor children's-book illustration: soft pastel washes, delicate ink outlines, paper texture" },
+  { id: 'anime', e: '🌸', he: 'אנימה', en: 'Anime', d: L('מצויר ביד, חלומי', 'Hand-drawn, dreamy'),
+    p: 'a hand-drawn Japanese animation character: clean line art, soft cel shading, warm dreamy colors, gentle painted background' },
+  { id: 'felt', e: '🧸', he: 'בובת לבד', en: 'Felt doll', d: L('רכה וחמודה', 'Soft and cuddly'),
+    p: 'a handmade needle-felted wool doll: fuzzy felt texture, tiny stitched details, soft studio lighting, photographed like a real toy' },
+  { id: 'clay', e: '🏺', he: 'פלסטלינה', en: 'Clay', d: L('דמות סטופ־מושן', 'Stop-motion figure'),
+    p: 'a stop-motion clay figure: handcrafted plasticine look, visible fingerprints and sculpted texture, soft lighting' },
+  { id: 'sticker', e: '⭐', he: 'מדבקה', en: 'Sticker', d: L('קריקטורה שטוחה ועליזה', 'Flat, cheerful cartoon'),
+    p: 'a cute flat cartoon sticker: bold clean outlines, simple flat colors, thick white sticker border' },
+];
+const aiPrompt = (st) => `Transform the baby in this photo into ${st.p}.
+Keep the baby clearly recognizable: same face shape, eye color, skin tone, hair color and hairstyle, and expression.
+Head and shoulders, centered, facing the camera, cheerful and sweet.
+Square 1:1 image, simple soft pastel background, no text, no other people.`;
+const GEMINI_URL = 'https://gemini.google.com/app';
+
+function aiAvatarHTML() {
+  return `
+  <details class="ai-av">
+    <summary><span>✨</span><b>${L('אווטאר מצויר עם Gemini', 'Illustrated avatar with Gemini')}</b><em>${L('חינם', 'Free')}</em></summary>
+    <p class="small muted">${L('הופכים תמונה של הילד/ה לדמות מצוירת בעזרת Gemini של Google, בחינם עם חשבון Google רגיל. לוקח כדקה.', 'Turn a photo of your child into an illustrated character with Google Gemini – free with a regular Google account. Takes about a minute.')}</p>
+    <ol class="ai-steps">
+      <li><b>${L('בחרו סגנון', 'Pick a style')}</b>
+        <div class="ai-styles">${AI_STYLES.map((st, i) => `<button type="button" class="ai-style ${i === 0 ? 'on' : ''}" data-aistyle="${st.id}"><span>${st.e}</span><b>${L(st.he, st.en)}</b><small>${st.d}</small></button>`).join('')}</div>
+      </li>
+      <li><b>${L('מעתיקים את ההוראה ופותחים את Gemini', 'Copy the instruction and open Gemini')}</b>
+        <button type="button" class="btn block ai-go" id="aiGo">📋 ${L('העתקה ופתיחת Gemini', 'Copy & open Gemini')} ↗</button>
+        <details class="ai-prompt"><summary>${L('ההעתקה לא עבדה? הטקסט כאן', 'Copy didn’t work? Here’s the text')}</summary><textarea id="aiPrompt" readonly rows="6" dir="ltr"></textarea></details>
+      </li>
+      <li><b>${L('ב-Gemini', 'In Gemini')}</b>
+        <ul class="ai-sub">
+          <li>${L('מתחברים עם חשבון Google (אם צריך)', 'Sign in with your Google account (if needed)')}</li>
+          <li>${L('לוחצים על <b>＋</b> ליד שורת הכתיבה ← <b>העלאת קובץ / גלריה</b> ← בוחרים תמונה ברורה של הפנים', 'Tap <b>＋</b> next to the text box → <b>Upload / Gallery</b> → choose a clear photo of the face')}</li>
+          <li>${L('לוחצים לחיצה ארוכה בשורת הכתיבה ← <b>הדבקה</b> ← שליחה ➤', 'Long-press the text box → <b>Paste</b> → send ➤')}</li>
+        </ul>
+      </li>
+      <li><b>${L('שומרים את התמונה שיצאה', 'Save the result')}</b>
+        <ul class="ai-sub">
+          <li>${L('בטלפון: לוחצים על התמונה ← כפתור ההורדה ⬇️ (או לחיצה ארוכה ← <b>שמירה בתמונות</b>)', 'On a phone: tap the image → the download button ⬇️ (or long-press → <b>Save to Photos</b>)')}</li>
+          <li>${L('במחשב: מעבירים את העכבר על התמונה ← ⬇️ הורדה', 'On a computer: hover over the image → ⬇️ download')}</li>
+        </ul>
+      </li>
+      <li><b>${L('חוזרים לכאן ומעלים אותה', 'Come back here and upload it')}</b>
+        <button type="button" class="btn ghost block" id="aiUpload">📷 ${L('בחירת התמונה המצוירת', 'Choose the illustrated image')}</button>
+      </li>
+    </ol>
+    <div class="ai-tips small">
+      <p>💡 ${L('לא מספיק דומה? כתבו ל-Gemini: <i dir="ltr">make it look more like the photo</i>', 'Not similar enough? Tell Gemini: <i>make it look more like the photo</i>')}</p>
+      <p>💡 ${L('רוצים סגנון אחר? חוזרים לשלב 1 ובוחרים שוב, אפשר באותה שיחה.', 'Want a different style? Go back to step 1 and pick again – the same chat works.')}</p>
+      <p>🔒 ${L('התמונה נשלחת ל-Google מהחשבון שלכם בלבד, לא דרכנו. אפשר למחוק את השיחה ב-Gemini אחרי שמורידים.', 'The photo goes to Google from your own account only, not through us. You can delete the chat in Gemini after downloading.')}</p>
+    </div>
+  </details>`;
+}
+
+function bindAiAvatar(root) {
+  let style = AI_STYLES[0];
+  const ta = $('#aiPrompt', root);
+  ta.value = aiPrompt(style);
+  $$('[data-aistyle]', root).forEach((b) => b.onclick = () => {
+    style = AI_STYLES.find((x) => x.id === b.dataset.aistyle);
+    ta.value = aiPrompt(style);
+    $$('[data-aistyle]', root).forEach((x) => x.classList.toggle('on', x === b));
+  });
+  $('#aiGo', root).onclick = () => {
+    const text = aiPrompt(style);
+    const fallback = () => {
+      $('.ai-prompt', root).open = true; ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch { /* ללא תמיכה */ }
+      if (!ok) toast(L('העתיקו את הטקסט שמופיע מתחת לכפתור 👇', 'Copy the text below the button 👇'));
+    };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).catch(fallback); else fallback();
+    window.open(GEMINI_URL, '_blank', 'noopener');
+    toast(L('ההוראה הועתקה 📋 עכשיו ב-Gemini: ＋ ← תמונה ← הדבקה ← שליחה', 'Instruction copied 📋 Now in Gemini: ＋ → photo → paste → send'));
+  };
+  $('#aiUpload', root).onclick = () => { $('#avFile', root).click(); root.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); };
+}
+
 function mountAvatarEditor(root, initial, onChange) {
   const ed = {
     img: null, zoom: 1, ox: 0, oy: 0,
@@ -427,9 +509,11 @@ function mountAvatarEditor(root, initial, onChange) {
       <div class="small muted" style="margin:12px 0 6px">${L('מסגרת וקישוט:', 'Frame & sticker:')}</div>
       <div class="frame-pick">${FRAMES.map((c) => `<button type="button" class="${c === ed.frame ? 'on' : ''}" data-frame="${c}" style="background:${c}" aria-label="${L('צבע מסגרת', 'Frame color')}"></button>`).join('')}</div>
       <div class="sticker-pick">${STICKERS.map((s) => `<button type="button" class="${s === ed.sticker ? 'on' : ''}" data-sticker="${s}">${s || '✕'}</button>`).join('')}</div>
+      ${aiAvatarHTML()}
     </div>`;
 
   const canvas = $('#avCanvas', root), stage = $('.av-stage', root);
+  bindAiAvatar(root);
   let pending = false;
 
   const emit = () => onChange?.(value());

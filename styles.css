@@ -780,3 +780,28 @@ details.past-days summary { cursor: pointer; color: var(--muted); font-weight: 5
 [dir="ltr"] .wz-step.in-prev { animation-name: inPrevLtr; }
 @keyframes inNextLtr { from { opacity: 0; transform: translateX(40px); } }
 @keyframes inPrevLtr { from { opacity: 0; transform: translateX(-40px); } }
+
+/* ===== אווטאר מצויר עם Gemini ===== */
+.ai-av { margin-top: 16px; text-align: start; border: 2px dashed #c5b8ff; border-radius: 18px; padding: 4px 12px; background: linear-gradient(135deg, rgba(197,184,255,.18), rgba(255,198,168,.18)); }
+.ai-av > summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 10px 0; cursor: pointer; }
+.ai-av > summary::-webkit-details-marker { display: none; }
+.ai-av > summary > span { font-size: 22px; }
+.ai-av > summary > b { flex: 1; }
+.ai-av > summary > em { font-style: normal; font-size: 11px; font-weight: 700; background: #4caf7a; color: #fff; border-radius: 999px; padding: 2px 8px; }
+.ai-steps { padding-inline-start: 22px; margin: 6px 0; }
+.ai-steps > li { margin: 12px 0; }
+.ai-steps > li::marker { font-weight: 800; color: #7c6cf2; }
+.ai-sub { padding-inline-start: 18px; margin: 6px 0 0; font-size: 14px; }
+.ai-sub li { margin: 4px 0; }
+.ai-styles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.ai-style { border: 2px solid var(--line); background: var(--card); border-radius: 14px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; cursor: pointer; }
+.ai-style span { font-size: 24px; }
+.ai-style b { font-size: 13px; }
+.ai-style small { font-size: 10.5px; color: var(--muted); line-height: 1.2; text-align: center; }
+.ai-style.on { border-color: #7c6cf2; box-shadow: 0 0 0 3px rgba(124,108,242,.18); }
+.ai-go { margin-top: 8px; background: linear-gradient(135deg, #7c6cf2, #4f8cff); }
+.ai-prompt { margin-top: 6px; font-size: 12px; }
+.ai-prompt summary { cursor: pointer; color: var(--muted); }
+.ai-prompt textarea { width: 100%; margin-top: 6px; font-size: 12px; }
+#aiUpload { margin-top: 8px; }
+.ai-tips p { margin: 6px 0; }
