@@ -336,7 +336,7 @@ function foodCardHTML(f) {
   <button class="food ${n ? 'tried' : 'untried'} ${f.allergen ? 'is-allergen' : ''}" data-food="${f.id}">
     ${f.allergen ? '<span class="badge-allergen">⭐ אלרגן</span>' : ''}
     ${f.choke ? '<span class="badge-choke" title="שימו לב לצורת ההגשה">⚠️</span>' : ''}
-    <span class="f-emoji anim-${f.anim || 'bounce'}" style="animation-delay:-${delay}ms">${f.emoji}</span>
+    <span class="f-emoji anim-${f.anim || 'bounce'}" style="${animStyle(f)};animation-delay:-${delay}ms">${f.emoji}</span>
     <span class="f-name">${esc(f.name)}</span>
     <span class="f-count">${n ? `${n} טעימות` : 'עוד לא'}</span>
     ${n ? `<span class="ring"><i style="width:${pct}%"></i></span>` : ''}
@@ -639,7 +639,7 @@ function openRecipe(id) {
     <h3 class="section-title">🧺 מרכיבים</h3>
     <div class="card ing-list">
       ${r.ingredients.map((fid) => { const f = foodById(fid); const n = logsFor(fid).length; return `
-        <div class="ing"><span class="ing-e anim-${f.anim}">${f.emoji}</span><span>${esc(f.name)} ${f.allergen ? '⭐' : ''}</span>
+        <div class="ing"><span class="ing-e anim-${f.anim}" style="${animStyle(f)}">${f.emoji}</span><span>${esc(f.name)} ${f.allergen ? '⭐' : ''}</span>
         <small class="${n ? 'ok' : 'new'}">${n ? `טעם ${n}×` : 'חדש!'}</small></div>`; }).join('')}
       ${r.extras.map((x) => `<div class="ing"><span class="ing-e">▫️</span><span>${esc(x)}</span></div>`).join('')}
     </div>
@@ -738,7 +738,7 @@ function openFood(id) {
 
   openModal(`
     <div class="detail-hero" style="--stage:${cat?.color || '#ffd9c9'}">
-      <div class="stage"><span class="big anim-${f.anim || 'bounce'}">${f.emoji}</span></div>
+      <div class="stage">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="${animStyle(f)}">${f.emoji}</span></div>
       <h2>${esc(f.name)}</h2>
       <div class="muted small">${cat ? cat.emoji + ' ' + cat.name : ''}</div>
     </div>
@@ -783,7 +783,7 @@ function openLog(foodId) {
 
   openModal(`
     <div class="detail-hero" style="padding:0">
-      <span class="big anim-${f.anim || 'bounce'}" style="font-size:64px">${f.emoji}</span>
+      <div class="stage mini" style="--stage:${CATEGORIES.find((c) => c.id === f.cat)?.color || '#ffd9c9'}">${fxHTML(f)}<span class="big anim-${f.anim || 'bounce'}" style="font-size:64px;${animStyle(f)}">${f.emoji}</span></div>
       <h2 style="font-size:22px">טעימה: ${esc(f.name)}</h2>
     </div>
     ${warn}
@@ -863,7 +863,9 @@ function openAllergen(key) {
 
 function openAddFood() {
   const emojis = ['🍽️', '🥗', '🍲', '🥞', '🧆', '🥟', '🍜', '🫓', '🥯', '🧇', '🍪', '🫒', '🥥', '🍍', '🍋', '🥜', '🌶️', '🥘'];
-  const anims = ['bounce', 'wiggle', 'spin', 'float', 'pulse', 'jelly', 'swing', 'roll', 'hop', 'shake'];
+  const anims = Object.keys(MOTION_DUR);
+  const fxs = ['sparkle', 'hearts', 'juice', 'steam', 'leaves', 'seeds', 'bubbles', 'crumbs', 'swirl', 'pop', 'zest', 'shine', 'smell', 'drizzle', 'snow'];
+  const fxNames = { sparkle: '✨ נצנוץ', hearts: '💛 לבבות', juice: '💧 מיץ', steam: '♨️ אדים', leaves: '🍃 עלים', seeds: '• גרעינים', bubbles: '🫧 בועות', crumbs: '🍞 פירורים', swirl: '🌀 מערבולת', pop: '💥 פיצוץ', zest: '🍋 רעננות', shine: '✨ ברק', smell: '〜 ניחוח', drizzle: '🍯 זילוף', snow: '❄️ פתיתים' };
   openModal(`
     <h2 style="margin-bottom:6px">✨ מוצר חדש</h2>
     <form class="form" id="addForm">
@@ -873,6 +875,8 @@ function openAddFood() {
       <div class="choice-row" data-group="emoji">${emojis.map((e, n) => `<button type="button" class="choice ${n ? '' : 'on'}" data-val="${e}" style="flex:0 0 52px"><span class="ce">${e}</span></button>`).join('')}</div>
       <label>אנימציה</label>
       <div class="choice-row" data-group="anim">${anims.map((a, n) => `<button type="button" class="choice ${n ? '' : 'on'}" data-val="${a}" style="flex:0 0 52px"><span class="ce anim-${a}">🍽️</span></button>`).join('')}</div>
+      <label>אפקט</label>
+      <div class="choice-row" data-group="fx">${fxs.map((x, n) => `<button type="button" class="choice ${n ? '' : 'on'}" data-val="${x}" style="flex:0 0 auto;padding:6px 10px">${fxNames[x]}</button>`).join('')}</div>
       <label for="afAllergen">מכיל אלרגן?</label>
       <select id="afAllergen"><option value="">לא</option>${visibleAllergens().map(([k, a]) => `<option value="${k}">${a.emoji} ${a.name}</option>`).join('')}</select>
       <label for="afTip">טיפ הגשה (לא חובה)</label>
@@ -894,6 +898,8 @@ function openAddFood() {
         name: $('#afName', b).value.trim(),
         emoji: $('[data-group="emoji"] .on', b).dataset.val,
         anim: $('[data-group="anim"] .on', b).dataset.val,
+        fx: $('[data-group="fx"] .on', b).dataset.val,
+        color: CATEGORIES.find((c) => c.id === (allergen ? 'allergen' : 'custom')).color,
         tip: $('#afTip', b).value.trim(),
       };
       if (allergen) f.allergen = allergen;
