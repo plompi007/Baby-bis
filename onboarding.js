@@ -21,7 +21,7 @@ function authHTML() {
   <div class="auth">
     <div class="floaters" aria-hidden="true">${floaters.map((e, i) => `<span style="--i:${i}">${e}</span>`).join('')}</div>
     <div class="auth-logo">🥄</div>
-    <h2>ביס ראשון</h2>
+    <h2 dir="ltr">Baby Bis</h2>
     <p class="muted">כל טעימה נספרת 💛</p>
     <div class="card auth-card">
       <div class="segment">

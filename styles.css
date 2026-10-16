@@ -379,7 +379,8 @@ body.gate { padding-bottom: 0; }
 .floaters { position: absolute; inset: -20px 0 auto; height: 260px; pointer-events: none; }
 .floaters span { position: absolute; font-size: 30px; opacity: .55; top: calc(10px + (var(--i) * 37px) % 210px); left: calc((var(--i) * 53px + 8px) % 92%); animation: float calc(3s + var(--i) * .3s) ease-in-out infinite; animation-delay: calc(var(--i) * -.7s); }
 .pass-wrap { position: relative; }
-.pass-eye { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 18px; }
+.pass-wrap input { padding-right: 44px !important; }
+.pass-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 18px; }
 .auth-err { color: var(--red); font-size: 14px; min-height: 22px; margin: 8px 0; font-weight: 500; }
 .shake-x { animation: shakeX .4s; }
 @keyframes shakeX { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
