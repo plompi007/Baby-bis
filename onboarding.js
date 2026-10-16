@@ -428,13 +428,20 @@ function aiAvatarHTML() {
       <li><b>${L('בחרו סגנון', 'Pick a style')}</b> <span class="small muted">${L('(דוגמאות אמיתיות שנוצרו ב-Gemini)', '(real examples made with Gemini)')}</span>
         <div class="ai-styles">${AI_STYLES.map((st, i) => `<button type="button" class="ai-style ${i === 0 ? 'on' : ''}" data-aistyle="${st.id}"><img src="icons/styles/${st.id}.jpg" alt="" loading="lazy" width="200" height="200"><b>${st.e} ${L(st.he, st.en)}</b><small>${st.d}</small></button>`).join('')}</div>
       </li>
-      <li><b>${L('מעתיקים את ההוראה ופותחים את Gemini', 'Copy the instruction and open Gemini')}</b>
+      <li><b>${L('שולחים ל-Gemini', 'Send to Gemini')}</b>
+        <div class="ai-share" id="aiShareBox" hidden>
+          <label class="btn block ai-go" id="aiPickBtn">📷 ${L('בחירת תמונה של הילד/ה', 'Choose a photo of your child')}<input type="file" id="aiPick" accept="image/*" hidden></label>
+          <div class="ai-picked" id="aiPicked" hidden><img id="aiPickImg" alt=""><button type="button" class="btn block ai-go" id="aiShare">📤 ${L('שיתוף ל-Gemini', 'Share to Gemini')}</button></div>
+          <p class="small muted">${L('בתפריט השיתוף בוחרים <b>Gemini</b>. התמונה תצורף לבד וההוראה כבר מועתקת – נשאר רק להדביק ולשלוח.', 'In the share menu choose <b>Gemini</b>. The photo is attached automatically and the instruction is already copied – just paste and send.')}</p>
+          <div class="or"><span>${L('או ידנית', 'or manually')}</span></div>
+        </div>
         <button type="button" class="btn block ai-go" id="aiGo">📋 ${L('העתקה ופתיחת Gemini', 'Copy & open Gemini')} ↗</button>
         <details class="ai-prompt"><summary>${L('ההעתקה לא עבדה? הטקסט כאן', 'Copy didn’t work? Here’s the text')}</summary><textarea id="aiPrompt" readonly rows="6" dir="ltr"></textarea></details>
       </li>
       <li><b>${L('ב-Gemini', 'In Gemini')}</b>
         <ul class="ai-sub">
           <li>${L('מתחברים עם חשבון Google (אם צריך)', 'Sign in with your Google account (if needed)')}</li>
+          <li>${L('שיתפתם תמונה? היא כבר שם – דלגו לשורה הבאה.', 'Shared a photo? It’s already there – skip to the next line.')}</li>
           <li>${L('לוחצים על <b>＋</b> ליד שורת הכתיבה ← <b>העלאת קובץ / גלריה</b> ← בוחרים תמונה ברורה של הפנים', 'Tap <b>＋</b> next to the text box → <b>Upload / Gallery</b> → choose a clear photo of the face')}</li>
           <li>${L('לוחצים לחיצה ארוכה בשורת הכתיבה ← <b>הדבקה</b> ← שליחה ➤', 'Long-press the text box → <b>Paste</b> → send ➤')}</li>
         </ul>
@@ -476,6 +483,38 @@ function bindAiAvatar(root) {
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).catch(fallback); else fallback();
     window.open(GEMINI_URL, '_blank', 'noopener');
     toast(L('ההוראה הועתקה 📋 עכשיו ב-Gemini: ＋ ← תמונה ← הדבקה ← שליחה', 'Instruction copied 📋 Now in Gemini: ＋ → photo → paste → send'));
+  };
+  // שיתוף ישיר (בעיקר באנדרואיד): התמונה מצורפת ל-Gemini דרך תפריט השיתוף של הטלפון
+  let canShareFiles = false;
+  try { canShareFiles = !!navigator.canShare?.({ files: [new File([''], 'a.jpg', { type: 'image/jpeg' })] }); } catch { /* ללא תמיכה */ }
+  if (canShareFiles) {
+    $('#aiShareBox', root).hidden = false;
+    $('#aiGo', root).classList.add('ghost');
+    $('#aiGo', root).classList.remove('ai-go');
+  }
+  let picked = null;
+  $('#aiPick', root).onchange = (e) => {
+    picked = e.target.files[0] || null;
+    if (!picked) return;
+    const img = $('#aiPickImg', root);
+    if (img.src) URL.revokeObjectURL(img.src);
+    img.src = URL.createObjectURL(picked);
+    $('#aiPicked', root).hidden = false;
+    $('#aiPickBtn', root).firstChild.textContent = L('📷 החלפת תמונה', '📷 Change photo');
+    $('#aiPickBtn', root).classList.replace('ai-go', 'ghost');
+  };
+  $('#aiShare', root).onclick = async () => {
+    if (!picked) return;
+    const text = aiPrompt(style);
+    try { await navigator.clipboard?.writeText(text); } catch { /* ממשיכים בלי */ }
+    try {
+      await navigator.share({ files: [picked], text });
+      toast(L('ב-Gemini: לחיצה ארוכה ← הדבקה ← שליחה ✨', 'In Gemini: long-press → paste → send ✨'));
+    } catch (ex) {
+      if (ex?.name === 'AbortError') return;
+      toast(L('השיתוף לא הצליח – פותחים את Gemini בדרך הרגילה', 'Sharing didn’t work – opening Gemini the regular way'));
+      $('#aiGo', root).click();
+    }
   };
   $('#aiUpload', root).onclick = () => { $('#avFile', root).click(); root.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); };
 }

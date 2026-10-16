@@ -806,3 +806,9 @@ details.past-days summary { cursor: pointer; color: var(--muted); font-weight: 5
 .ai-prompt textarea { width: 100%; margin-top: 6px; font-size: 12px; }
 #aiUpload { margin-top: 8px; }
 .ai-tips p { margin: 6px 0; }
+.ai-share .or { margin: 12px 0 4px; }
+.ai-picked { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.ai-picked img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex: none; }
+.ai-picked .btn { flex: 1; margin: 0; }
+#aiShareBox .btn + .ai-picked, #aiShareBox p { margin-top: 8px; }
+#aiPickBtn { display: block; text-align: center; cursor: pointer; margin-top: 8px; }
