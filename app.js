@@ -10,6 +10,8 @@ const defaultState = () => ({
   logs: [],                   // { id, foodId, ts, liked, amount, symptoms:[], notes }
   customFoods: [],
   cleared: {},                // allergenKey -> ts שבו ההורה סימן שהרגישות נשללה ע״י רופא/ה
+  favNotes: [],
+  favRecipes: [],
   settings: { disabled: ['shellfish'], targets: {}, notify: false, lastNotified: '' },
 });
 
@@ -193,7 +195,7 @@ function render() {
   $('#babyLine').textContent = state.baby ? `${state.baby.name} · ${ageText(state.baby.birth)}` : 'מעקב טעימות ואלרגנים';
   if (!state.baby) { v.innerHTML = onboardingHTML(); bindOnboarding(); updateBadge(); return; }
   v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
-  const views = { home: homeHTML, foods: foodsHTML, allergens: allergensHTML, journal: journalHTML, guide: guideHTML };
+  const views = { home: homeHTML, foods: foodsHTML, allergens: allergensHTML, recipes: recipesHTML, journal: journalHTML, guide: tipsHTML };
   v.innerHTML = views[tab]();
   bindView();
   updateBadge();
@@ -266,8 +268,10 @@ function homeHTML() {
   <button class="btn block" data-action="quicklog">＋ רישום טעימה</button>
   <h3 class="section-title">🕒 טעימות אחרונות</h3>
   ${recent.length ? `<div class="card" style="padding:4px">${recent.map(logHTML).join('')}</div>` : `<div class="empty"><span class="e-emoji">🥄</span><p>עוד אין טעימות. בחרו מוצר והתחילו!</p></div>`}
-  <h3 class="section-title">💡 טיפ יומי</h3>
-  <div class="card">${dailyTip()}</div>`;
+  ${recipeOfDayHTML()}
+  <h3 class="section-title">📝 פנינת חוכמה</h3>
+  <div class="note-home">${noteHTML(noteOfDay(), true)}</div>
+  <button class="btn ghost block" data-action="shufflenote">🔀 עוד פתק</button>`;
 }
 
 function greetingLine() {
@@ -278,18 +282,17 @@ function greetingLine() {
   return 'לילה טוב! נתראה מחר עם טעמים חדשים ✨';
 }
 
-function dailyTip() {
-  const tips = GUIDE.flatMap((g) => g.body.map((b) => ({ icon: g.icon, b })));
-  const d = Math.floor(Date.now() / DAY);
-  const t = tips[d % tips.length];
-  return `<span style="font-size:24px">${t.icon}</span> ${esc(t.b)}`;
+let noteShift = 0;
+function noteOfDay() {
+  const d = Math.floor(Date.now() / DAY) + noteShift;
+  return NOTES[((d * 7) % NOTES.length + NOTES.length) % NOTES.length];
 }
 
 function reminderHTML(r) {
   return `
   <div class="reminder ${r.kind}">
     <span class="r-emoji anim-${r.kind === 'overdue' ? 'shake' : 'pulse'}">${r.info.a.emoji}</span>
-    <div class="r-text"><b>${esc(r.title)}</b><small>${esc(r.text)}</small></div>
+    <div class="r-text"><b>${esc(r.title)}</b><small>${esc(r.text)}</small>${reminderIdea(r)}</div>
     ${r.kind === 'suspected' ? `<button class="btn small ghost" data-allergen="${r.info.key}">פרטים</button>` : `<button class="btn small" data-quick-allergen="${r.info.key}">נתנו ✓</button>`}
   </div>`;
 }
@@ -407,6 +410,42 @@ function logHTML(l, withDelete) {
   </div>`;
 }
 
+let tipsSeg = 'notes';
+let noteFilter = 'all';
+function tipsHTML() {
+  const seg = `<div class="segment">
+    <button class="${tipsSeg === 'notes' ? 'on' : ''}" data-seg="notes">📝 פתקי חוכמה</button>
+    <button class="${tipsSeg === 'guide' ? 'on' : ''}" data-seg="guide">📚 מדריך מלא</button>
+  </div>`;
+  return seg + (tipsSeg === 'notes' ? notesHTML() : guideHTML());
+}
+
+function notesHTML() {
+  const chips = [{ id: 'all', name: 'הכל', emoji: '📝' }, ...NOTE_CATS, { id: 'fav', name: 'שמורים', emoji: '❤️' }]
+    .map((c) => `<button class="chip ${noteFilter === c.id ? 'active' : ''}" data-notecat="${c.id}">${c.emoji} ${c.name}</button>`).join('');
+  let list = NOTES;
+  if (noteFilter === 'fav') list = NOTES.filter((n) => state.favNotes.includes(n.id));
+  else if (noteFilter !== 'all') list = NOTES.filter((n) => n.cat === noteFilter);
+  return `
+  <div class="chips">${chips}</div>
+  ${list.length ? `<div class="notes-board">${list.map((n, i) => noteHTML(n, false, i)).join('')}</div>`
+    : `<div class="empty"><span class="e-emoji">🤍</span><p>עוד לא שמרתם פתקים. לחצו על הלב בפתק שאהבתם.</p></div>`}`;
+}
+
+function noteHTML(n, big, i = 0) {
+  const c = NOTE_CATS.find((x) => x.id === n.cat);
+  const fav = state.favNotes.includes(n.id);
+  const rot = big ? -1.5 : (((n.id.charCodeAt(1) + n.id.length * 3) % 7) - 3) * 0.8;
+  return `
+  <article class="note ${big ? 'big' : ''}" style="--note:${c.color};--rot:${rot}deg;animation-delay:${Math.min(i, 12) * 50}ms">
+    <span class="pin" aria-hidden="true"></span>
+    <div class="note-cat">${c.emoji} ${c.name}</div>
+    <h4>${esc(n.title)}</h4>
+    <p>${esc(n.text)}</p>
+    <button class="note-fav ${fav ? 'on' : ''}" data-favnote="${n.id}" aria-label="שמירה">${fav ? '❤️' : '🤍'}</button>
+  </article>`;
+}
+
 function guideHTML() {
   return `
   <div class="card small">📚 התוכן מבוסס על הנחיות AAP, NIAID, EAACI, CSACI ומחקרים עדכניים. <b>אינו מחליף ייעוץ רפואי</b> – בכל שאלה, ובמיוחד אם יש אקזמה קשה או אלרגיה ידועה, התייעצו עם רופא/ת הילדים.</div>
@@ -430,21 +469,40 @@ function guideHTML() {
 function bindView() {
   const v = $('#view');
   v.onclick = (e) => {
-    const t = e.target.closest('[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-del],[data-goto-guide]');
+    const t = e.target.closest('[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-del],[data-goto-guide],[data-seg],[data-notecat],[data-favnote],[data-recipe],[data-rtag]');
     if (!t) return;
+    if (t.dataset.favnote) { e.stopPropagation(); return toggleFav('favNotes', t.dataset.favnote, t); }
+    if (t.dataset.seg) { tipsSeg = t.dataset.seg; return render(); }
+    if (t.dataset.notecat) { noteFilter = t.dataset.notecat; return render(); }
+    if (t.dataset.recipe) { e.preventDefault(); return openRecipe(t.dataset.recipe); }
+    if (t.dataset.rtag) { recipeFilter.tag = t.dataset.rtag; return render(); }
     if (t.dataset.quickAllergen) { e.stopPropagation(); return quickAllergen(t.dataset.quickAllergen); }
     if (t.dataset.food) return openFood(t.dataset.food);
     if (t.dataset.cat) { foodFilter.cat = t.dataset.cat; return render(); }
     if (t.dataset.show) { foodFilter.show = t.dataset.show; return render(); }
     if (t.dataset.allergen) return openAllergen(t.dataset.allergen);
     if (t.dataset.del) return deleteLog(t.dataset.del);
-    if (t.hasAttribute('data-goto-guide')) { e.preventDefault(); return go('guide'); }
+    if (t.hasAttribute('data-goto-guide')) { e.preventDefault(); tipsSeg = 'guide'; return go('guide'); }
     const a = t.dataset.action;
     if (a === 'quicklog') { go('foods'); setTimeout(() => $('#foodSearch')?.focus(), 50); }
     if (a === 'addfood') openAddFood();
     if (a === 'calendar') downloadICS();
+    if (a === 'shufflenote') {
+      noteShift++;
+      const box = $('.note-home');
+      box.innerHTML = noteHTML(noteOfDay(), true);
+      box.firstElementChild.classList.add('flip');
+    }
+    if (a === 'agefilter') { recipeFilter.ageOnly = !recipeFilter.ageOnly; render(); }
   };
   v.onkeydown = (e) => { if (e.key === 'Enter' && e.target.dataset.allergen) openAllergen(e.target.dataset.allergen); };
+  const rs = $('#recipeSearch');
+  if (rs) rs.oninput = () => {
+    recipeFilter.q = rs.value;
+    const pos = rs.selectionStart;
+    render();
+    const n = $('#recipeSearch'); n.focus(); n.setSelectionRange(pos, pos);
+  };
   const s = $('#foodSearch');
   if (s) s.oninput = () => {
     foodFilter.q = s.value;
@@ -465,6 +523,181 @@ function quickAllergen(key) {
   const recent = allergenLogs(key)[0];
   const food = recent ? foodById(recent.foodId) : allFoods().find((f) => f.allergen === key);
   if (food) openLog(food.id);
+}
+
+function toggleFav(listKey, id, btn) {
+  const list = state[listKey];
+  const i = list.indexOf(id);
+  if (i >= 0) list.splice(i, 1); else list.push(id);
+  save();
+  const on = i < 0;
+  if (btn) { btn.textContent = on ? '❤️' : '🤍'; btn.classList.toggle('on', on); btn.classList.remove('beat'); void btn.offsetWidth; btn.classList.add('beat'); }
+  if (on) toast('נשמר במועדפים ❤️');
+  if (!btn || (tab === 'guide' && noteFilter === 'fav') || (tab === 'recipes' && recipeFilter.tag === 'fav')) render();
+}
+
+/* ===================== מתכונים ===================== */
+let recipeFilter = { tag: 'all', q: '', ageOnly: true };
+const TEXTURE = { puree: 'פירה', mash: 'מרוסק', finger: 'אוכל אצבעות' };
+
+function recipeAllergens(r) {
+  return [...new Set(r.ingredients.map((id) => foodById(id)?.allergen).filter(Boolean))];
+}
+// אלרגנים במתכון שעוד לא הוכרו (או שיש חשד לתגובה) – לא מומלץ להכיר אלרגן חדש דרך מתכון משולב
+function recipeBlockers(r) {
+  return recipeAllergens(r).filter((k) => ['notStarted', 'suspected'].includes(allergenInfo(k).status));
+}
+function recipeAgeOk(r) { const a = ageMonths(); return a === null || a + 0.25 >= r.age; }
+
+function recipeOfDayHTML() {
+  const age = ageMonths();
+  if (age !== null && age < 5.5) return '';
+  const due = reminders().filter((x) => x.kind === 'overdue' || x.kind === 'soon').map((x) => x.info.key);
+  let pool = RECIPES.filter((r) => recipeAgeOk(r) && !recipeBlockers(r).length);
+  const forDue = pool.filter((r) => recipeAllergens(r).some((k) => due.includes(k)));
+  if (forDue.length) pool = forDue;
+  if (!pool.length) pool = RECIPES.filter((r) => recipeAgeOk(r) && !recipeAllergens(r).length);
+  if (!pool.length) return '';
+  const r = pool[Math.floor(Date.now() / DAY) % pool.length];
+  const why = forDue.length ? `שומר על ${recipeAllergens(r).filter((k) => due.includes(k)).map((k) => ALLERGENS[k].name).join(' ו')} 💪` : 'רעיון טעים להיום';
+  return `
+  <h3 class="section-title">🍲 מתכון מומלץ להיום</h3>
+  <button class="card recipe-feature" data-recipe="${r.id}">
+    <span class="rf-emoji anim-jelly">${r.emoji}</span>
+    <span class="rf-text"><b>${esc(r.name)}</b><small>${why} · ${r.time} דק׳</small></span>
+    <span class="rf-go">←</span>
+  </button>`;
+}
+
+function reminderIdea(r) {
+  if (!['overdue', 'soon'].includes(r.kind)) return '';
+  const rec = RECIPES.find((x) => recipeAgeOk(x) && recipeAllergens(x).includes(r.info.key) && !recipeBlockers(x).length);
+  return rec ? `<a href="#" class="idea" data-recipe="${rec.id}">💡 רעיון: ${esc(rec.name)}</a>` : '';
+}
+
+function recipesHTML() {
+  const tags = [['all', '🍽️ הכל'], ['fav', '❤️ שמורים'], ['אלרגן', '⭐ אלרגנים'], ['ברזל', '💪 ברזל'], ['אוכל אצבעות', '✋ אוכל אצבעות'], ['מהיר', '⚡ מהיר'], ['מקפיא', '🧊 מקפיא']];
+  let list = RECIPES;
+  if (recipeFilter.ageOnly) list = list.filter(recipeAgeOk);
+  if (recipeFilter.tag === 'fav') list = list.filter((r) => state.favRecipes.includes(r.id));
+  else if (recipeFilter.tag !== 'all') list = list.filter((r) => r.tags.includes(recipeFilter.tag));
+  const q = recipeFilter.q.trim();
+  if (q) list = list.filter((r) => r.name.includes(q) || r.ingredients.some((id) => foodById(id)?.name.includes(q)));
+  return `
+  <input class="search" id="recipeSearch" type="search" placeholder="🔍 חיפוש מתכון או מרכיב..." value="${esc(recipeFilter.q)}">
+  <div class="chips">${tags.map(([id, t]) => `<button class="chip ${recipeFilter.tag === id ? 'active' : ''}" data-rtag="${id}">${t}</button>`).join('')}</div>
+  <label class="age-toggle"><input type="checkbox" data-action="agefilter" ${recipeFilter.ageOnly ? 'checked' : ''}> רק מתכונים שמתאימים לגיל של ${esc(babyName())}</label>
+  <div class="recipes">${list.map(recipeCardHTML).join('')}</div>
+  ${list.length ? '' : '<div class="empty"><span class="e-emoji">🍳</span><p>לא נמצאו מתכונים</p></div>'}
+  <h3 class="section-title">✨ שילובי טעמים מנצחים</h3>
+  <div class="combos">${COMBOS.map((c, i) => `<div class="combo" style="animation-delay:${i * 40}ms"><b>${c.a}</b><span class="plus">+</span><b>${c.b}</b><small>${c.note}</small></div>`).join('')}</div>
+  <p class="small muted">🧂 בלי מלח, בלי סוכר ובלי דבש מתחת לגיל שנה. תבלינים עדינים ועשבי תיבול – בהחלט כן!</p>`;
+}
+
+function recipeCardHTML(r) {
+  const als = recipeAllergens(r);
+  const blockers = recipeBlockers(r);
+  const newOnes = r.ingredients.filter((id) => !logsFor(id).length).length;
+  const fav = state.favRecipes.includes(r.id);
+  return `
+  <button class="recipe" data-recipe="${r.id}">
+    <span class="r-emoji anim-${['bounce', 'jelly', 'wiggle', 'float', 'pulse'][Number(r.id.slice(1)) % 5]}">${r.emoji}</span>
+    <span class="r-body">
+      <b>${esc(r.name)} ${fav ? '❤️' : ''}</b>
+      <small>מגיל ${r.age} ח׳ · ${TEXTURE[r.texture]} · ${r.time} דק׳</small>
+      <span class="r-tags">
+        ${als.map((k) => `<span class="mini-allergen ${blockers.includes(k) ? 'blocked' : ''}" title="${ALLERGENS[k].name}">${ALLERGENS[k].emoji}</span>`).join('')}
+        ${blockers.length ? '<span class="mini-warn">יש אלרגן שעוד לא הוכר</span>' : newOnes ? `<span class="mini-new">${newOnes} טעמים חדשים</span>` : '<span class="mini-ok">הכל מוכר ✓</span>'}
+      </span>
+    </span>
+  </button>`;
+}
+
+function openRecipe(id) {
+  const r = RECIPES.find((x) => x.id === id);
+  if (!r) return;
+  const als = recipeAllergens(r);
+  const blockers = recipeBlockers(r);
+  const fav = state.favRecipes.includes(r.id);
+  const ageOk = recipeAgeOk(r);
+  openModal(`
+    <div class="detail-hero">
+      <div class="stage" style="--stage:#ffe2c4"><span class="big anim-jelly">${r.emoji}</span></div>
+      <h2>${esc(r.name)}</h2>
+      <div class="muted small">מגיל ${r.age} חודשים · ${TEXTURE[r.texture]} · ${r.time} דק׳</div>
+    </div>
+    ${!ageOk ? `<div class="warn-banner small">👶 המתכון מתאים מגיל ${r.age} חודשים – כדאי לחכות קצת.</div>` : ''}
+    ${blockers.length ? `<div class="warn-banner small">⚠️ המתכון מכיל ${blockers.map((k) => ALLERGENS[k].name).join(', ')} – ${blockers.some((k) => allergenInfo(k).status === 'suspected') ? 'נרשמה תגובה לאלרגן זה, יש להתייעץ עם רופא/ה.' : 'שעוד לא הוכר. מומלץ להכיר אלרגן חדש קודם לבד, בכמות קטנה, ורק אחר כך במתכון משולב.'}</div>`
+      : als.length ? `<div class="allergen-banner">⭐ שומר על: ${als.map((k) => ALLERGENS[k].emoji + ' ' + ALLERGENS[k].name).join(' · ')}</div>` : ''}
+    <h3 class="section-title">🧺 מרכיבים</h3>
+    <div class="card ing-list">
+      ${r.ingredients.map((fid) => { const f = foodById(fid); const n = logsFor(fid).length; return `
+        <div class="ing"><span class="ing-e anim-${f.anim}">${f.emoji}</span><span>${esc(f.name)} ${f.allergen ? '⭐' : ''}</span>
+        <small class="${n ? 'ok' : 'new'}">${n ? `טעם ${n}×` : 'חדש!'}</small></div>`; }).join('')}
+      ${r.extras.map((x) => `<div class="ing"><span class="ing-e">▫️</span><span>${esc(x)}</span></div>`).join('')}
+    </div>
+    <h3 class="section-title">👩‍🍳 הכנה</h3>
+    <ol class="steps">${r.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+    <div class="card small">💡 ${esc(r.tip)}</div>
+    <div class="row">
+      <button class="btn ghost" id="favRecipe">${fav ? '❤️ שמור' : '🤍 שמירה'}</button>
+      <button class="btn" id="madeIt" style="flex:2">😋 הכנו! רישום טעימה</button>
+    </div>
+  `, (b) => {
+    $('#favRecipe', b).onclick = (e) => { toggleFav('favRecipes', r.id); e.target.textContent = state.favRecipes.includes(r.id) ? '❤️ שמור' : '🤍 שמירה'; };
+    $('#madeIt', b).onclick = () => openRecipeLog(r);
+  });
+}
+
+// רישום טעימה של כל מרכיבי המתכון בבת אחת
+function openRecipeLog(r) {
+  const blockers = recipeBlockers(r);
+  const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  openModal(`
+    <div class="detail-hero" style="padding:0">
+      <span class="big anim-bounce" style="font-size:64px">${r.emoji}</span>
+      <h2 style="font-size:22px">${esc(r.name)}</h2>
+      <div class="muted small">כל מרכיב שתסמנו יירשם כטעימה</div>
+    </div>
+    <form class="form" id="rlForm">
+      <label>מה ${esc(babyName())} אכל/ה?</label>
+      <div class="symptoms ing-pick">${r.ingredients.map((fid) => { const f = foodById(fid); return `<label><input type="checkbox" value="${fid}" ${blockers.includes(f.allergen) ? '' : 'checked'}>${f.emoji} ${esc(f.name)}</label>`; }).join('')}</div>
+      ${blockers.length ? `<div class="warn-banner small">⚠️ אלרגן שעוד לא הוכר לא סומן. סמנו אותו רק אם הוא אכן נאכל.</div>` : ''}
+      <label>מתי?</label>
+      <input type="datetime-local" id="rlTime" value="${now.toISOString().slice(0, 16)}" required>
+      <label>איך היה?</label>
+      <div class="choice-row" data-group="liked">${REACTIONS.map((x, i) => `<button type="button" class="choice ${i === 1 ? 'on' : ''}" data-val="${x.id}"><span class="ce">${x.e}</span>${x.t}</button>`).join('')}</div>
+      <label>תסמינים? <span class="muted small">(השאירו ריק אם הכל תקין)</span></label>
+      <div class="symptoms sym-pick">${SYMPTOMS.map((s) => `<label class="${s.severe ? 'severe' : ''}"><input type="checkbox" value="${s.id}">${s.t}</label>`).join('')}</div>
+      <div id="emergencyBox"></div>
+      <div style="height:14px"></div>
+      <button class="btn block" type="submit">שמירה ✓</button>
+    </form>
+  `, (b) => {
+    $('.choice-row', b).addEventListener('click', (e) => {
+      const c = e.target.closest('.choice'); if (!c) return;
+      $$('.choice', e.currentTarget).forEach((x) => x.classList.toggle('on', x === c));
+    });
+    $('.sym-pick', b).addEventListener('change', () => {
+      const sel = $$('.sym-pick input:checked', b).map((x) => x.value);
+      $('#emergencyBox', b).innerHTML = sel.some((s) => SEVERE.includes(s))
+        ? `<div class="emergency">🚨 סימנים של תגובה חמורה אפשרית. אם הם מתרחשים עכשיו – <a href="tel:101">חייגו 101 מיד</a>.</div>`
+        : sel.length ? `<div class="warn-banner small">הפסיקו לתת, צלמו ופנו לרופא/ת הילדים.</div>` : '';
+    });
+    $('#rlForm', b).addEventListener('submit', (e) => {
+      e.preventDefault();
+      const foods = $$('.ing-pick input:checked', b).map((x) => x.value);
+      if (!foods.length) return toast('סמנו לפחות מרכיב אחד');
+      const ts = new Date($('#rlTime', b).value).getTime() || Date.now();
+      const liked = $('[data-group="liked"] .on', b)?.dataset.val;
+      const symptoms = $$('.sym-pick input:checked', b).map((x) => x.value);
+      for (const foodId of foods) state.logs.push({ id: uid(), foodId, ts, liked, amount: 'meal', symptoms, notes: `מתוך: ${r.name}` });
+      save(); closeModal();
+      if (symptoms.length) toast('נשמר. עקבו אחרי התסמינים והתייעצו עם רופא/ה 🩺');
+      else celebrate(r.emoji, `${foods.length} טעימות נרשמו! 👩‍🍳`);
+      render();
+    });
+  });
 }
 
 /* ===================== מודאל ===================== */

@@ -1,6 +1,6 @@
 // Service worker: עבודה ללא חיבור + פתיחת האפליקציה בלחיצה על התראה
-const CACHE = 'bis-rishon-v1';
-const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'manifest.json', 'icons/icon.svg'];
+const CACHE = 'bis-rishon-v2';
+const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'content.js', 'manifest.json', 'icons/icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

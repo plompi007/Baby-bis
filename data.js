@@ -101,6 +101,7 @@ const FOODS = [
   { id: 'turkey', name: 'הודו', emoji: '🦃', cat: 'protein', anim: 'hop', tip: 'טחון או מבושל רך.' },
   { id: 'liver', name: 'כבד עוף', emoji: '🟫', cat: 'protein', anim: 'pulse', tip: 'בכמות קטנה, ממרח. עשיר מאוד בברזל ובוויטמין A – פעם-פעמיים בשבוע מספיק.' },
   { id: 'hardegg', name: 'ביצה קשה', emoji: '🥚', cat: 'protein', anim: 'roll', allergen: 'egg', tip: 'מבושלת 10+ דקות, מעוכה או ברבעים.' },
+  { id: 'bakedegg', name: 'ביצה במאפה/תבשיל', emoji: '🥚', cat: 'protein', anim: 'bounce', allergen: 'egg', tip: 'ביצה בתוך פנקייק, מאפינס, קציצות או שקשוקה – מבושלת/אפויה היטב.' },
   { id: 'omelet', name: 'חביתה', emoji: '🍳', cat: 'protein', anim: 'jelly', allergen: 'egg', tip: 'עשויה היטב, ברצועות. אפשר להוסיף ירקות.' },
   { id: 'salmon', name: 'סלמון', emoji: '🐟', cat: 'protein', anim: 'swing', allergen: 'fish', tip: 'אפוי, מפורק לפתיתים, ללא עצמות.' },
   { id: 'whitefish', name: 'אמנון / בקלה', emoji: '🐠', cat: 'protein', anim: 'float', allergen: 'fish', tip: 'מבושל, מפורק, ללא עצמות.' },
