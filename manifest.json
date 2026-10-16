@@ -4,7 +4,7 @@
   "description": "מעקב אחר טעימות של התינוק, סימון אלרגנים ותזכורות לשמירה על חשיפה",
   "lang": "he",
   "dir": "rtl",
-  "start_url": "./",
+  "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fff8f1",
@@ -35,5 +35,5 @@
       "purpose": "any"
     }
   ],
-  "id": "./"
+  "id": "./?app=baby-bis-v2"
 }
