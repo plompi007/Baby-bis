@@ -372,6 +372,7 @@ function bindDone() {
     state.baby = { name: w.babyName, birth: w.birth, gender: w.gender || '' };
     state.avatar = w.avatar || { emoji: '👶', frame: FRAMES[0] };
     seedExposures(w.exposures, [...w.foods]);
+    checkBadges(true);
     state.onboarded = true;
     save();
     wizard = null;

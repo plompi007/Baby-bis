@@ -292,9 +292,12 @@ function render() {
   }
   if (gated) { renderWizard(); return; }
   v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
-  const views = { home: homeHTML, foods: foodsHTML, allergens: allergensHTML, recipes: recipesHTML, journal: journalHTML, guide: tipsHTML };
+  const views = { home: homeHTML, foods: foodsHTML, allergens: allergensHTML, recipes: recipesHTML, journal: journalHTML, guide: tipsHTML,
+    progress: progressHTML, plan: planHTML, memories: memoriesHTML, report: reportHTML };
+  if (tab === 'home') checkBadges(true); // הישגים קודמים נרשמים בשקט
   v.innerHTML = views[tab]();
   bindView();
+  if (tab === 'memories') hydratePhotos(v);
   updateBadge();
 }
 
@@ -337,6 +340,12 @@ function homeHTML() {
       <div class="stat"><b>${kidLogs().filter((l) => !l.seed && Date.now() - l.ts < 7 * DAY).length}</b><span>השבוע</span></div>
     </div>
   </section>
+  <nav class="tiles" aria-label="קיצורים">
+    <button data-action="plan"><span>📅</span>תכנית</button>
+    <button data-action="progress"><span>🏅</span>הישגים <em>${Object.keys(activeKid()?.badges || {}).length}</em></button>
+    <button data-action="memories"><span>📸</span>זיכרונות</button>
+    <button data-action="report"><span>🩺</span>לרופא/ה</button>
+  </nav>
   ${ageNote}
   ${alerts.map(reminderHTML).join('')}
   <section class="card today">
@@ -576,8 +585,9 @@ function guideHTML() {
 function bindView() {
   const v = $('#view');
   v.onclick = (e) => {
-    const t = e.target.closest('[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-edit],[data-goto-guide],[data-seg],[data-notecat],[data-favnote],[data-recipe],[data-rtag]');
+    const t = e.target.closest('[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-edit],[data-goto-guide],[data-seg],[data-notecat],[data-favnote],[data-recipe],[data-rtag],[data-mem]');
     if (!t) return;
+    if (t.dataset.mem) { memFilter = t.dataset.mem; return render(); }
     if (t.dataset.favnote) { e.stopPropagation(); return toggleFav('favNotes', t.dataset.favnote, t); }
     if (t.dataset.seg) { tipsSeg = t.dataset.seg; return render(); }
     if (t.dataset.notecat) { noteFilter = t.dataset.notecat; return render(); }
@@ -591,7 +601,10 @@ function bindView() {
     if (t.dataset.edit) { const l = state.logs.find((x) => x.id === t.dataset.edit); return l && openLog(l.foodId, l); }
     if (t.hasAttribute('data-goto-guide')) { e.preventDefault(); tipsSeg = 'guide'; return go('guide'); }
     const a = t.dataset.action;
-    if (['journal', 'tips', 'back', 'picker', 'kids'].includes(a)) e.preventDefault();
+    if (['journal', 'tips', 'back', 'picker', 'kids', 'plan', 'progress', 'memories', 'report'].includes(a)) e.preventDefault();
+    if (['plan', 'progress', 'memories', 'report'].includes(a)) return go(a);
+    if (a === 'shopping') return openShopping();
+    if (a === 'print') return printReport();
     if (a === 'picker') openPicker();
     if (a === 'journal') go('journal');
     if (a === 'tips') { tipsSeg = 'notes'; go('guide'); }
@@ -644,9 +657,11 @@ function quickAllergen(key) {
 // רישום בלחיצה אחת, עם אפשרות לבטל או להוסיף פרטים
 function quickLog(foodId) {
   const f = foodById(foodId);
-  const log = { id: uid(), kid: activeKidId(), foodId, ts: Date.now(), amount: 'taste', symptoms: [], notes: '' };
+  const log = { id: uid(), kid: activeKidId(), foodId, ts: Date.now(), amount: 'taste', texture: lastTexture(), symptoms: [], notes: '' };
+  if (!log.texture) delete log.texture;
   state.logs.push(log);
   save(); closeModal(); render();
+  checkBadges();
   const count = logsFor(foodId).length;
   celebrate(foodIcon(f), count === 1 ? `טעימה ראשונה של ${f.name}! 🎉` : `${f.name} – טעימה ${count} 👏`);
   toast(`✓ ${f.name} נרשם`, [
@@ -869,8 +884,9 @@ function openRecipeLog(r) {
       const ts = $('[data-body="time"]', b).hidden ? Date.now() : (new Date($('#rlTime', b).value).getTime() || Date.now());
       const liked = $('[data-group="liked"] .on', b)?.dataset.val;
       const symptoms = $$('.sym-pick input:checked', b).map((x) => x.value);
-      for (const foodId of foods) state.logs.push({ id: uid(), kid: activeKidId(), foodId, ts, liked, amount: 'meal', symptoms, notes: `מתוך: ${r.name}` });
+      for (const foodId of foods) state.logs.push({ id: uid(), kid: activeKidId(), foodId, ts, liked, amount: 'meal', texture: RECIPE_TEXTURE[r.texture], symptoms, notes: `מתוך: ${r.name}` });
       save(); closeModal();
+      if (!symptoms.length) checkBadges();
       if (symptoms.length) toast('נשמר. עקבו אחרי התסמינים והתייעצו עם רופא/ה 🩺');
       else celebrate(r.emoji, `${foods.length} טעימות נרשמו! 👩‍🍳`);
       render();
@@ -1006,6 +1022,8 @@ function openLog(foodId, edit) {
       <div class="choice-row reactions" data-group="liked" data-optional>${REACTIONS.map((r) => `<button type="button" class="choice ${edit?.liked === r.id ? 'on' : ''}" data-val="${r.id}"><span class="ce">${r.e}</span>${G(r.t)}</button>`).join('')}</div>
       <label>כמה?</label>
       <div class="choice-row" data-group="amount">${AMOUNTS.map((a) => `<button type="button" class="choice ${(edit?.amount || 'taste') === a.id ? 'on' : ''}" data-val="${a.id}">${a.t}</button>`).join('')}</div>
+      <label>מרקם <span class="muted small">(לא חובה)</span></label>
+      <div class="choice-row textures" data-group="texture" data-optional>${TEXTURES.map((t) => `<button type="button" class="choice ${(edit ? edit.texture : lastTexture()) === t.id ? 'on' : ''}" data-val="${t.id}"><span class="ce">${t.e}</span>${t.t}</button>`).join('')}</div>
       <div class="opt-rows">
         <button type="button" class="opt-row" data-toggle="time">🕒 <span id="timeLbl">${isNow ? 'עכשיו' : new Date(edit.ts).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span><em>שינוי</em></button>
         <div class="opt-body" data-body="time" hidden><input type="datetime-local" id="lgTime" value="${when.toISOString().slice(0, 16)}"></div>
@@ -1015,6 +1033,8 @@ function openLog(foodId, edit) {
           <div id="emergencyBox"></div>
         </div>
         <button type="button" class="opt-row" data-toggle="note">📝 הערה <em>${edit?.notes && !edit.seed ? esc(edit.notes) : 'הוספה'}</em></button>
+        <label class="opt-row photo-row">📸 תמונה למזכרת <em id="photoLbl">${edit?.photo ? 'יש תמונה' : 'הוספה'}</em><input type="file" id="lgPhoto" accept="image/*" hidden></label>
+        <div class="photo-prev" id="photoPrev" ${edit?.photo ? '' : 'hidden'}><img alt=""><button type="button" class="link-btn" id="photoDel">הסרת התמונה</button></div>
         <div class="opt-body" data-body="note" ${edit?.notes && !edit.seed ? '' : 'hidden'}><textarea id="lgNotes" maxlength="200" placeholder="צורת הגשה, עם מה ערבבנו...">${edit && !edit.seed ? esc(edit.notes || '') : ''}</textarea></div>
       </div>
       <div class="sheet-foot">
@@ -1046,6 +1066,18 @@ function openLog(foodId, edit) {
     symBox.addEventListener('change', updSym);
     if (hasSym) updSym();
     $('#lgDelete', b)?.addEventListener('click', () => { closeModal(); deleteLog(edit.id); });
+    // תמונה: undefined = ללא שינוי, null = להסיר, מחרוזת = תמונה חדשה
+    let photoData;
+    const prev = $('#photoPrev', b);
+    if (edit?.photo) Photos.get(edit.id).then((src) => { if (src) $('img', prev).src = src; });
+    $('#lgPhoto', b).onchange = async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      try {
+        photoData = await compressPhoto(file);
+        $('img', prev).src = photoData; prev.hidden = false; $('#photoLbl', b).textContent = 'נבחרה ✓';
+      } catch (ex) { toast(ex.message); }
+    };
+    $('#photoDel', b).onclick = () => { photoData = null; prev.hidden = true; $('#photoLbl', b).textContent = 'הוספה'; };
     $('#logForm', b).addEventListener('submit', (e) => {
       e.preventDefault();
       const timeOpen = !$('[data-body="time"]', b).hidden;
@@ -1053,17 +1085,24 @@ function openLog(foodId, edit) {
         ts: timeOpen || edit ? (new Date($('#lgTime', b).value).getTime() || Date.now()) : Date.now(),
         liked: $('[data-group="liked"] .on', b)?.dataset.val,
         amount: $('[data-group="amount"] .on', b)?.dataset.val,
+        texture: $('[data-group="texture"] .on', b)?.dataset.val,
         symptoms: $$('.symptoms input:checked', b).map((x) => x.value),
         notes: $('#lgNotes', b).value.trim(),
       };
+      if (!data.texture) delete data.texture;
+      const target = edit || { id: uid(), kid: activeKidId(), foodId };
+      if (photoData) { data.photo = true; Photos.put(target.id, photoData); }
+      if (photoData === null) { data.photo = false; Photos.remove(target.id); }
       if (edit) {
         Object.assign(edit, data, { seed: false });
         save(); closeModal(); render();
+        checkBadges();
         return toast('השינויים נשמרו ✓');
       }
-      const log = { id: uid(), kid: activeKidId(), foodId, ...data };
+      const log = Object.assign(target, data);
       state.logs.push(log);
       save(); closeModal(); render();
+      if (!log.symptoms.length) checkBadges();
       const count = logsFor(foodId).length;
       if (log.symptoms.length) toast('נשמר. עקבו אחרי התסמינים והתייעצו עם רופא/ה 🩺');
       else {

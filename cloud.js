@@ -206,7 +206,24 @@ const Cloud = (() => {
   }
   const wrap = (fn) => async (...a) => { try { return await fn(...a); } catch (e) { throw heError(e); } };
 
+  // תמונות: מסמך נפרד לכל תמונה, נטען רק כשמציגים אותה
+  const photoCache = new Map();
+  async function putPhoto(logId, data) {
+    photoCache.set(logId, data);
+    await db.doc(`families/${familyId}/photos/${logId}`).set({ data, kid: activeKidId(), ts: Date.now() }).catch(onError);
+    return true;
+  }
+  async function getPhoto(logId) {
+    if (photoCache.has(logId)) return photoCache.get(logId);
+    const s = await db.doc(`families/${familyId}/photos/${logId}`).get().catch(() => null);
+    const d = s?.data()?.data || null;
+    if (d) photoCache.set(logId, d);
+    return d;
+  }
+  async function removePhoto(logId) { photoCache.delete(logId); await db.doc(`families/${familyId}/photos/${logId}`).delete().catch(() => {}); }
+
   Object.assign(api, {
+    putPhoto, getPhoto, removePhoto,
     enabled, init, save, createFamily, joinFamily,
     register: wrap((email, pass) => auth.createUserWithEmailAndPassword(email.trim(), pass)),
     login: wrap((email, pass) => auth.signInWithEmailAndPassword(email.trim(), pass)),

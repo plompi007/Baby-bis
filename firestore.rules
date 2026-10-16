@@ -30,6 +30,13 @@ service cloud.firestore {
         allow read: if memberNow(fid);
         allow write: if memberAfter(fid);
       }
+
+      // תמונות לספר הזיכרונות (מסמך נפרד לכל תמונה, עד כמיליון תווים)
+      match /photos/{pid} {
+        allow read: if memberNow(fid);
+        allow write: if memberAfter(fid) && (request.resource == null || request.resource.data.data.size() < 1000000);
+        allow delete: if memberNow(fid);
+      }
     }
 
     // קודי הזמנה: אפשר לבדוק קוד מסוים, אי אפשר לסרוק את כולם
