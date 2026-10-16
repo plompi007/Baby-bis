@@ -165,7 +165,7 @@ function bindBaby() {
 function stepAvatar() {
   return `
     <h2>האווטאר של ${esc(wizard.babyName)} ✨</h2>
-    <p class="muted">העלו תמונה, והאפליקציה תהפוך אותה לאווטאר מצויר. אפשר גם לבחור דמות.</p>
+    <p class="muted">העלו תמונה של ${esc(wizard.babyName)}, או בחרו דמות חמודה.</p>
     <div id="avEditor"></div>
     <button class="btn block" id="wzNext" style="margin-top:14px">המשך ←</button>
     <button class="btn ghost block" id="wzSkip" style="margin-top:8px">אולי אחר כך</button>`;
@@ -285,7 +285,7 @@ function seedExposures(exposures, foodIds) {
 /* ===================== עורך אווטאר ===================== */
 function mountAvatarEditor(root, initial, onChange) {
   const ed = {
-    img: null, zoom: 1, ox: 0, oy: 0, style: 'cartoon',
+    img: null, zoom: 1, ox: 0, oy: 0,
     frame: initial?.frame || FRAMES[0], sticker: initial?.sticker || '',
     emoji: initial?.emoji || '👶', dataUrl: initial?.img || null,
   };
@@ -302,11 +302,6 @@ function mountAvatarEditor(root, initial, onChange) {
       <div id="avPhotoCtl" hidden>
         <div class="small muted" style="text-align:center;margin:8px 0">גררו את התמונה כדי למרכז את הפנים</div>
         <label class="zoom-row">🔍<input type="range" id="avZoom" min="1" max="3" step="0.05" value="1"></label>
-        <div class="choice-row av-styles">
-          <button type="button" class="choice on" data-style="cartoon"><span class="ce">🎨</span>מצויר</button>
-          <button type="button" class="choice" data-style="pastel"><span class="ce">🌸</span>פסטל</button>
-          <button type="button" class="choice" data-style="natural"><span class="ce">📷</span>טבעי</button>
-        </div>
       </div>
       <div id="avEmojiCtl" ${ed.dataUrl ? 'hidden' : ''}>
         <div class="small muted" style="margin:10px 0 6px">או בחרו דמות:</div>
@@ -367,11 +362,6 @@ function mountAvatarEditor(root, initial, onChange) {
     emit();
   });
   $('#avZoom', root).oninput = (e) => { ed.zoom = +e.target.value; draw(); };
-  $$('[data-style]', root).forEach((b) => b.onclick = () => {
-    ed.style = b.dataset.style;
-    $$('[data-style]', root).forEach((x) => x.classList.toggle('on', x === b));
-    draw();
-  });
   // גרירה למיקום הפנים
   let drag = null;
   canvas.addEventListener('pointerdown', (e) => { if (!ed.img) return; drag = { x: e.clientX, y: e.clientY, ox: ed.ox, oy: ed.oy }; canvas.setPointerCapture(e.pointerId); });

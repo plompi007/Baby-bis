@@ -1,5 +1,5 @@
 'use strict';
-// חשבונות מקומיים (במכשיר) ועיבוד תמונה לאווטאר.
+// חשבונות מקומיים (במכשיר) וחיתוך תמונה לאווטאר.
 // הסיסמה נשמרת כ-hash (PBKDF2 + salt), לא כטקסט. הנתונים של כל חשבון נשמרים במפתח נפרד.
 
 const Auth = (() => {
@@ -85,10 +85,10 @@ const Avatar = (() => {
     }
   }
 
-  // ציור התמונה בחיתוך ריבועי לפי זום והזזה, ואז הפעלת הסגנון
-  function render(canvas, img, { zoom = 1, ox = 0, oy = 0, style = 'cartoon' }) {
+  // ציור התמונה בחיתוך ריבועי לפי זום והזזה
+  function render(canvas, img, { zoom = 1, ox = 0, oy = 0 }) {
     canvas.width = canvas.height = SIZE;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas.getContext('2d');
     const w = img.width, h = img.height;
     const scale = (SIZE / Math.min(w, h)) * zoom;
     const dw = w * scale, dh = h * scale;
@@ -96,80 +96,9 @@ const Avatar = (() => {
     const x = Math.max(-maxX, Math.min(maxX, ox)), y = Math.max(-maxY, Math.min(maxY, oy));
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, (SIZE - dw) / 2 + x, (SIZE - dh) / 2 + y, dw, dh);
-    if (style !== 'natural') stylize(ctx, style);
-    else glow(ctx);
     return { ox: x, oy: y };
-  }
-
-  function blur(src, n, r) {
-    const tmp = new Float32Array(src.length), out = new Float32Array(src.length);
-    const pass = (from, to, horiz) => {
-      for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) {
-        let s0 = 0, s1 = 0, s2 = 0, c = 0;
-        for (let k = -r; k <= r; k++) {
-          const xx = horiz ? b + k : b, yy = horiz ? a : a + k;
-          if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
-          const i = (yy * n + xx) * 4;
-          s0 += from[i]; s1 += from[i + 1]; s2 += from[i + 2]; c++;
-        }
-        const o = (a * n + b) * 4;
-        to[o] = s0 / c; to[o + 1] = s1 / c; to[o + 2] = s2 / c; to[o + 3] = 255;
-      }
-    };
-    pass(src, tmp, true); pass(tmp, out, false);
-    return out;
-  }
-
-  // סגנון "קריקטורה" / "פסטל": החלקה, הגברת צבע, צמצום גוונים וקווי מתאר
-  function stylize(ctx, style) {
-    const n = SIZE;
-    const id = ctx.getImageData(0, 0, n, n), d = id.data;
-    let sm = blur(d, n, 2);
-    sm = blur(sm, n, 1);
-    const lum = new Float32Array(n * n);
-    for (let i = 0; i < n * n; i++) lum[i] = sm[i * 4] * .299 + sm[i * 4 + 1] * .587 + sm[i * 4 + 2] * .114;
-    const levels = style === 'pastel' ? 5 : 7;
-    const step = 255 / (levels - 1);
-    const sat = style === 'pastel' ? 1.15 : 1.45;
-    const thr = style === 'pastel' ? 70 : 48;
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      const i = y * n + x, p = i * 4;
-      let r = sm[p], g = sm[p + 1], b = sm[p + 2];
-      const avg = (r + g + b) / 3;
-      r = avg + (r - avg) * sat; g = avg + (g - avg) * sat; b = avg + (b - avg) * sat;
-      r = Math.round(Math.max(0, Math.min(255, r)) / step) * step;
-      g = Math.round(Math.max(0, Math.min(255, g)) / step) * step;
-      b = Math.round(Math.max(0, Math.min(255, b)) / step) * step;
-      if (style === 'pastel') { r = r * .7 + 255 * .3; g = g * .7 + 235 * .3; b = b * .7 + 245 * .3; }
-      // Sobel
-      let edge = 0;
-      if (x > 0 && y > 0 && x < n - 1 && y < n - 1) {
-        const L = (dx, dy) => lum[(y + dy) * n + x + dx];
-        const gx = -L(-1, -1) - 2 * L(-1, 0) - L(-1, 1) + L(1, -1) + 2 * L(1, 0) + L(1, 1);
-        const gy = -L(-1, -1) - 2 * L(0, -1) - L(1, -1) + L(-1, 1) + 2 * L(0, 1) + L(1, 1);
-        edge = Math.hypot(gx, gy);
-      }
-      if (edge > thr) {
-        const k = style === 'pastel' ? .55 : .25;
-        r = r * k + (style === 'pastel' ? 90 : 40) * (1 - k);
-        g = g * k + (style === 'pastel' ? 60 : 25) * (1 - k);
-        b = b * k + (style === 'pastel' ? 110 : 45) * (1 - k);
-      }
-      d[p] = r; d[p + 1] = g; d[p + 2] = b; d[p + 3] = 255;
-    }
-    ctx.putImageData(id, 0, 0);
-  }
-
-  // סגנון "טבעי": רק חימום עדין ובהירות קלה
-  function glow(ctx) {
-    const id = ctx.getImageData(0, 0, SIZE, SIZE), d = id.data;
-    for (let p = 0; p < d.length; p += 4) {
-      d[p] = Math.min(255, d[p] * 1.04 + 6);
-      d[p + 1] = Math.min(255, d[p + 1] * 1.02 + 4);
-      d[p + 2] = Math.min(255, d[p + 2] * .98 + 2);
-    }
-    ctx.putImageData(id, 0, 0);
   }
 
   const toDataURL = (canvas) => canvas.toDataURL('image/jpeg', 0.88);
