@@ -136,7 +136,7 @@ function badgesHTML(limit) {
 
 function varietyCardHTML() {
   const c = badgeContext();
-  const cats = CATEGORIES.filter((x) => !['allergen', 'custom'].includes(x.id));
+  const cats = CATEGORIES.filter((x) => !['allergen', 'custom'].includes(x.id) && FOODS.some((y) => y.cat === x.id));
   return `
   <section class="card">
     <div class="card-head"><h3>🎨 ${L('מגוון', 'Variety')}</h3><span class="muted small">${c.foods.size} ${L('מוצרים', 'foods')}</span></div>

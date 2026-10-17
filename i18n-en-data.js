@@ -1,7 +1,7 @@
 'use strict';
 // English content for data.js (categories, allergens, foods). Applied only when the app language is English.
 
-const EN_CATEGORIES = { veg: 'Vegetables', fruit: 'Fruits', grain: 'Grains & carbs', protein: 'Proteins', legume: 'Legumes', dairy: 'Dairy', herbs: 'Spices & herbs', allergen: 'Allergens', custom: 'Mine' };
+const EN_CATEGORIES = { veg: 'Vegetables', fruit: 'Fruits', grain: 'Grains & carbs', meat: 'Meat & poultry', fish: 'Fish', egg: 'Eggs', legume: 'Legumes & tofu', dairy: 'Dairy', nuts: 'Nuts, peanuts & sesame', herbs: 'Spices & herbs', allergen: 'All allergens', custom: 'Mine' };
 
 // [name, how, note]
 const EN_ALLERGENS = {

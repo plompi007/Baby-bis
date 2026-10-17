@@ -111,6 +111,11 @@ const daysBetween = (a, b) => Math.floor((startOfDay(b) - startOfDay(a)) / DAY);
 
 const allFoods = () => FOODS.concat(state.customFoods);
 const foodById = (id) => allFoods().find((f) => f.id === id);
+// קטגוריה בסינון: 'allergen' = כל מוצר עם אלרגן, 'iron' = עשיר בברזל
+// חלוקה לפי קטגוריות (מוצרים שהוספתי – תמיד תחת "שלי")
+const groupByCat = (list) => CATEGORIES.filter((c) => c.id !== 'allergen')
+  .map((c) => [c, list.filter((f) => (c.id === 'custom' ? f.custom : !f.custom && f.cat === c.id))]).filter(([, fs]) => fs.length);
+const inCat = (f, cat) => cat === 'all' || (cat === 'allergen' ? !!f.allergen : cat === 'iron' ? !!ironLevel(f.id) : f.cat === cat);
 const activeAllergens = () => Object.keys(ALLERGENS).filter((k) => !ALLERGENS[k].legacy && !state.settings.disabled.includes(k));
 const visibleAllergens = () => Object.entries(ALLERGENS).filter(([, a]) => !a.legacy);
 // כותרת "אגוזים" לפני האגוז הראשון ברשימה
@@ -410,8 +415,8 @@ function reminderHTML(r) {
 function foodsHTML() {
   const q = foodFilter.q.trim();
   let list = allFoods();
-  if (foodFilter.cat === 'iron') list = list.filter((f) => ironLevel(f.id)).sort((a, b) => ironLevel(b.id) - ironLevel(a.id));
-  else if (foodFilter.cat !== 'all') list = list.filter((f) => f.cat === foodFilter.cat || (foodFilter.cat === 'allergen' && f.allergen));
+  list = list.filter((f) => inCat(f, foodFilter.cat));
+  if (foodFilter.cat === 'iron') list.sort((x, y) => ironLevel(y.id) - ironLevel(x.id));
   if (q) list = list.filter((f) => matchQ(f.name, q));
   if (foodFilter.show === 'tried') list = list.filter((f) => logsFor(f.id).length);
   if (foodFilter.show === 'untried') list = list.filter((f) => !logsFor(f.id).length);
@@ -428,8 +433,9 @@ function foodsHTML() {
     <div class="chips">${chips}</div>
     <div class="chips sub">${shows}<span class="count-note">${L(G(`${esc(babyName())} טעמ·ה ${tried} מתוך ${allFoods().length}`), `${esc(babyName())} tasted ${tried} of ${allFoods().length}`)}</span></div>
   </div>
+  ${foodFilter.cat === 'all' && !q ? groupByCat(list).map(([c, fs]) => `<h3 class="cat-head"><span>${c.emoji} ${c.name}</span><small>${fs.filter((f) => logsFor(f.id).length).length}/${fs.length}</small></h3><div class="grid">${fs.map(foodCardHTML).join('')}</div>`).join('') : ''}
   <div class="grid">
-    ${list.map(foodCardHTML).join('')}
+    ${foodFilter.cat === 'all' && !q ? '' : list.map(foodCardHTML).join('')}
     <button class="food" data-action="addfood"><span class="f-emoji anim-pulse">➕</span><span class="f-name">${L('מוצר חדש', 'New food')}</span><span class="f-count">${L('הוספה', 'Add')}</span></button>
   </div>
   ${list.length ? '' : `<div class="empty"><span class="e-emoji">🤷</span><p>${L('לא נמצאו מוצרים', 'No foods found')}</p></div>`}`;
@@ -696,7 +702,7 @@ function openPicker(opts = {}) {
   const tile = (f) => `<button class="pick-tile ${f.allergen ? 'is-allergen' : ''} ${sel.has(f.id) ? 'sel' : ''}" data-pick="${f.id}"><span class="anim-${f.anim}" style="${animStyle(f)}">${foodIcon(f)}</span><b>${esc(f.name)}</b></button>`;
   const mealTile = (m) => `<button class="pick-tile meal-tile" data-meal="${m.id}"><span>${m.emoji || '🍽️'}</span><b>${esc(m.name)}</b><small>${m.ingredients.length} ${L('מרכיבים', 'items')}</small></button>`;
   let cat = 'all';
-  const list = (q) => allFoods().filter((f) => (cat === 'all' || f.cat === cat) && (!q || matchQ(f.name, q)));
+  const list = (q) => allFoods().filter((f) => inCat(f, cat) && (!q || matchQ(f.name, q)));
   const meals = state.meals || [];
   openModal(`
     <h2 class="sheet-title">${L(G(`מה ${esc(babyName())} טעמ·ה?`), `What did ${esc(babyName())} taste?`)}</h2>
@@ -711,7 +717,7 @@ function openPicker(opts = {}) {
       <h3 class="pk-head">🍽️ ${L('כל המוצרים', 'All foods')}</h3>
       <div class="chips">${[{ id: 'all', name: L('הכל', 'All'), emoji: '🍽️' }, ...CATEGORIES.filter((c) => c.id !== 'custom' || state.customFoods.length)].map((c) => `<button class="chip ${c.id === 'all' ? 'active' : ''}" data-pcat="${c.id}">${c.emoji} ${c.name}</button>`).join('')}</div>
     </div>
-    <div class="pick-grid-all" id="pkGrid">${list('').map(tile).join('')}</div>
+    <div id="pkGrid">${groupByCat(list('')).map(([c, fs]) => `<h3 class="cat-head small-head">${c.emoji} ${c.name}</h3><div class="pick-grid-all">${fs.map(tile).join('')}</div>`).join('')}</div>
     <div class="sheet-foot pk-foot" id="pkFoot" hidden>
       <div class="pk-sel" id="pkSel"></div>
       <button class="btn" id="pkGo"></button>
@@ -728,7 +734,8 @@ function openPicker(opts = {}) {
       const q = $('#pkSearch', b).value.trim();
       $$('.pk-head, .pick-row, .recipe-link', top).forEach((x) => { x.hidden = !!q; });
       const items = list(q);
-      grid.innerHTML = items.length ? items.map(tile).join('') : `<div class="empty small">${L(`לא מצאנו "${esc(q)}".`, `No match for "${esc(q)}".`)} <button class="link-btn" data-action="addfood-q">${L('להוסיף כמוצר חדש?', 'Add it as a new food?')}</button></div>`;
+      grid.innerHTML = !items.length ? '' : cat === 'all' && !q ? groupByCat(items).map(([c, fs]) => `<h3 class="cat-head small-head">${c.emoji} ${c.name}</h3><div class="pick-grid-all">${fs.map(tile).join('')}</div>`).join('') : `<div class="pick-grid-all">${items.map(tile).join('')}</div>`;
+      if (!items.length) grid.innerHTML = `<div class="empty small">${L(`לא מצאנו "${esc(q)}".`, `No match for "${esc(q)}".`)} <button class="link-btn" data-action="addfood-q">${L('להוסיף כמוצר חדש?', 'Add it as a new food?')}</button></div>`;
       syncTiles();
     };
     const setMode = (m) => {

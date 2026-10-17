@@ -884,3 +884,9 @@ details.past-days summary { cursor: pointer; color: var(--muted); font-weight: 5
 .save-meal { display: flex; gap: 8px; align-items: center; margin: 12px 0 4px; font-size: 14px; font-weight: 500; }
 .save-meal input { width: 20px; height: 20px; accent-color: var(--primary); }
 #mlMore { margin: 6px 0 2px; }
+
+/* ===== כותרות קטגוריה ===== */
+.cat-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 17px; margin: 20px 4px 10px; }
+.cat-head small { font-size: 12px; color: var(--muted); font-weight: 500; }
+.cat-head.small-head { font-size: 14px; margin: 16px 2px 0; color: var(--muted); }
+.cat-head + .grid { margin-top: 0; }
