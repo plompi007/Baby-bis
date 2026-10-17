@@ -268,6 +268,8 @@ $$('.tabbar [data-tab]').forEach((b) => b.addEventListener('click', () => go(b.d
 $('#fabBtn').addEventListener('click', () => openPicker());
 $('#settingsBtn').addEventListener('click', openSettings);
 $('#tipsBtn').addEventListener('click', () => go('guide'));
+$('#sosBtn').addEventListener('click', () => { closeModal(); go('choking'); });
+document.addEventListener('click', (e) => { if (e.target.closest('[data-sos]')) { e.preventDefault(); closeModal(); go('choking'); } });
 
 function go(t) {
   tab = t;
@@ -295,7 +297,7 @@ function render() {
   if (gated) { renderWizard(); return; }
   v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
   const views = { home: homeHTML, foods: foodsHTML, allergens: allergensHTML, recipes: recipesHTML, journal: journalHTML, guide: tipsHTML,
-    progress: progressHTML, plan: planHTML, memories: memoriesHTML, report: reportHTML };
+    progress: progressHTML, plan: planHTML, memories: memoriesHTML, report: reportHTML, choking: chokingHTML };
   if (tab === 'home') checkBadges(true); // הישגים קודמים נרשמים בשקט
   v.innerHTML = views[tab]();
   bindView();
@@ -355,6 +357,7 @@ function homeHTML() {
     <div class="card-head"><h3>📋 ${L('מה כדאי לתת היום', 'What to give today')}</h3>${todo.length ? `<span class="pill">${todo.length}</span>` : ''}</div>
     ${todo.length ? todo.map(reminderHTML).join('') : `<div class="today-done"><span class="e-emoji">🌟</span><p>${L('הכל מעודכן! אפשר פשוט ליהנות מהארוחה.', 'All up to date! Just enjoy the meal.')}</p></div>`}
   </section>
+  ${ironCardHTML()}
   <button class="btn block big-cta" data-action="picker">＋ ${L('רישום טעימה', 'Log a taste')}</button>
   ${recipeOfDayHTML()}
   <div class="section-row"><h3 class="section-title">🕒 ${L('טעימות אחרונות', 'Recent tastes')}</h3>${kidLogs().length ? `<a href="#" class="see-all" data-action="journal">${L('ליומן המלא', 'Full journal')} ${FWD}</a>` : ''}</div>
@@ -406,12 +409,13 @@ function reminderHTML(r) {
 function foodsHTML() {
   const q = foodFilter.q.trim();
   let list = allFoods();
-  if (foodFilter.cat !== 'all') list = list.filter((f) => f.cat === foodFilter.cat || (foodFilter.cat === 'allergen' && f.allergen));
+  if (foodFilter.cat === 'iron') list = list.filter((f) => ironLevel(f.id)).sort((a, b) => ironLevel(b.id) - ironLevel(a.id));
+  else if (foodFilter.cat !== 'all') list = list.filter((f) => f.cat === foodFilter.cat || (foodFilter.cat === 'allergen' && f.allergen));
   if (q) list = list.filter((f) => matchQ(f.name, q));
   if (foodFilter.show === 'tried') list = list.filter((f) => logsFor(f.id).length);
   if (foodFilter.show === 'untried') list = list.filter((f) => !logsFor(f.id).length);
 
-  const chips = [{ id: 'all', name: L('הכל', 'All'), emoji: '🍽️' }, ...CATEGORIES.filter((c) => c.id !== 'custom' || state.customFoods.length)]
+  const chips = [{ id: 'all', name: L('הכל', 'All'), emoji: '🍽️' }, { id: 'iron', name: L('עשיר בברזל', 'Iron-rich'), emoji: '💪' }, ...CATEGORIES.filter((c) => c.id !== 'custom' || state.customFoods.length)]
     .map((c) => `<button class="chip ${foodFilter.cat === c.id ? 'active' : ''}" data-cat="${c.id}">${c.emoji} ${c.name}</button>`).join('');
   const shows = [['all', L('הכל', 'All')], ['tried', L('נטעמו', 'Tasted')], ['untried', L('עוד לא', 'Not yet')]]
     .map(([id, t]) => `<button class="chip ${foodFilter.show === id ? 'active' : ''}" data-show="${id}">${t}</button>`).join('');
@@ -589,7 +593,7 @@ function guideHTML() {
 function bindView() {
   const v = $('#view');
   v.onclick = (e) => {
-    const t = e.target.closest('[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-edit],[data-goto-guide],[data-seg],[data-notecat],[data-favnote],[data-recipe],[data-rtag],[data-mem]');
+    const t = e.target.closest('[data-chage],[data-food],[data-cat],[data-show],[data-action],[data-allergen],[data-quick-allergen],[data-edit],[data-goto-guide],[data-seg],[data-notecat],[data-favnote],[data-recipe],[data-rtag],[data-mem]');
     if (!t) return;
     if (t.dataset.mem) { memFilter = t.dataset.mem; return render(); }
     if (t.dataset.favnote) { e.stopPropagation(); return toggleFav('favNotes', t.dataset.favnote, t); }
@@ -602,12 +606,14 @@ function bindView() {
     if (t.dataset.cat) { foodFilter.cat = t.dataset.cat; return render(); }
     if (t.dataset.show) { foodFilter.show = t.dataset.show; return render(); }
     if (t.dataset.allergen) return openAllergen(t.dataset.allergen);
+    if (t.dataset.chage) { chokeAge = t.dataset.chage; return render(); }
     if (t.dataset.edit) { const l = state.logs.find((x) => x.id === t.dataset.edit); return l && openLog(l.foodId, l); }
     if (t.hasAttribute('data-goto-guide')) { e.preventDefault(); tipsSeg = 'guide'; return go('guide'); }
     const a = t.dataset.action;
     if (['journal', 'tips', 'back', 'picker', 'kids', 'plan', 'progress', 'memories', 'report'].includes(a)) e.preventDefault();
     if (['plan', 'progress', 'memories', 'report'].includes(a)) return go(a);
     if (a === 'shopping') return openShopping();
+    if (a === 'sharecard') return openShareCard();
     if (a === 'install') return openInstall();
     if (a === 'install-x') { try { localStorage.setItem('bis-install-x', '1'); } catch { /* ללא אחסון */ } return render(); }
     if (a === 'print') return printReport();
@@ -972,6 +978,7 @@ function openFood(id) {
       <h2>${esc(f.name)}</h2>
       <div class="muted small">${cat ? cat.emoji + ' ' + cat.name : ''}</div>
     </div>
+    ${ironLevel(f.id) ? `<div class="iron-banner">💪 ${ironLevel(f.id) === 2 ? L('מקור מצוין לברזל', 'An excellent source of iron') : L('מקור טוב לברזל', 'A good source of iron')}${ironLevel(f.id) && !['beef', 'lamb', 'liver', 'chicken', 'turkey', 'salmon', 'tuna', 'sardine', 'seabream', 'shrimp'].includes(f.id) ? L(' – לשלב עם ויטמין C 🍊', ' – pair with vitamin C 🍊') : ''}</div>` : VITC.includes(f.id) ? `<div class="iron-banner c">🍊 ${L('עשיר בוויטמין C – עוזר לספוג ברזל מהארוחה', 'Rich in vitamin C – helps absorb iron from the meal')}</div>` : ''}
     ${al ? `<div class="allergen-banner"><span class="anim-pulse" style="display:inline-block">⭐</span> ${L('אלרגן', 'Allergen')}: ${al.name} – ${L('חשוב לשמור על חשיפה קבועה', 'keep up regular exposure')}</div>` : ''}
     ${reacted ? `<div class="warn-banner">⚠️ ${L('נרשמה תגובה למוצר זה. מומלץ להתייעץ עם רופא/ה לפני מתן נוסף.', 'A reaction was recorded for this food. Consult a doctor before giving it again.')}</div>` : ''}
     <div class="progress">
@@ -980,7 +987,7 @@ function openFood(id) {
       <div class="small muted" style="margin-top:6px">${encourage}</div>
     </div>
     ${f.tip ? `<div class="card small">🍽️ <b>${L('איך מגישים', 'How to serve')}:</b> ${esc(f.tip)}</div>` : ''}
-    ${f.choke ? `<div class="warn-banner small">⚠️ <b>${L('בטיחות', 'Safety')}:</b> ${esc(f.choke)}</div>` : ''}
+    ${f.choke ? `<div class="warn-banner small">⚠️ <b>${L('בטיחות', 'Safety')}:</b> ${esc(f.choke)} <a href="#" class="sos-link" data-sos>🆘 ${L('מה עושים בחנק?', 'What to do if choking?')}</a></div>` : ''}
     ${al ? `<div class="card small">⭐ <b>${L(`הכנסת ${al.name}`, `Introducing ${al.name}`)}:</b> ${esc(al.how)}</div>` : ''}
     ${n ? `<h3 class="section-title">${L('היסטוריה', 'History')}</h3><div class="card list">${logs.slice(0, 8).map((l) => logHTML(l, true)).join('')}</div>` : ''}
     ${f.custom ? `<button class="btn ghost block" id="delFood" style="margin-top:10px">${L('מחיקת מוצר', 'Delete food')}</button>` : ''}

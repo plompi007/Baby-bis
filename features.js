@@ -110,7 +110,10 @@ function checkBadges(silent) {
   const fresh = BADGES.filter((b) => !kid.badges[b.id] && b.test(c));
   fresh.forEach((b) => { kid.badges[b.id] = Date.now(); });
   if (fresh.length) save();
-  if (!silent && fresh.length) setTimeout(() => celebrate(fresh[0].e, L(`הישג חדש: ${G(fresh[0].t)}!`, `New badge: ${fresh[0].t}!`)), 2100);
+  if (!silent && fresh.length) setTimeout(() => {
+    celebrate(fresh[0].e, L(`הישג חדש: ${G(fresh[0].t)}!`, `New badge: ${fresh[0].t}!`));
+    setTimeout(() => toast(L('🏅 הישג חדש! לשתף עם המשפחה?', '🏅 New badge! Share with family?'), [{ label: L('📤 שיתוף', '📤 Share'), fn: () => openShareCard('badge') }]), 1900);
+  }, 2100);
   return fresh;
 }
 
@@ -146,6 +149,7 @@ function varietyCardHTML() {
 
 function progressHTML() {
   return `${subHead(L(`📈 ההתקדמות של ${esc(babyName())}`, `📈 ${esc(babyName())}’s progress`))}
+  <button class="btn block share-cta" data-action="sharecard">📤 ${L('כרטיס הישג לשיתוף עם המשפחה', 'Share card for the family')}</button>
   ${badgesHTML()}
   ${varietyCardHTML()}
   ${textureCardHTML()}
@@ -428,4 +432,215 @@ function openInstall() {
     const url = location.origin + location.pathname;
     try { await navigator.clipboard.writeText(url); toast(L('הקישור הועתק 📋', 'Link copied 📋')); } catch { prompt(L('העתיקו את הקישור:', 'Copy the link:'), url); }
   });
+}
+
+/* ===================== ברזל ===================== */
+// מגיל 6 חודשים מאגרי הברזל מהלידה מתרוקנים – מומלץ מזון עשיר בברזל בלפחות 2 ארוחות ביום
+const IRON_HIGH = ['beef', 'lamb', 'liver', 'lentil', 'blacklentil', 'chickpea', 'hummus', 'bean', 'tofu', 'edamame', 'fava', 'mungbean', 'sardine'];
+const IRON_MED = ['chicken', 'turkey', 'salmon', 'tuna', 'seabream', 'shrimp', 'hardegg', 'bakedegg', 'omelet', 'spinach', 'chard', 'kale', 'pea', 'quinoa', 'buckwheat', 'oat', 'millet', 'tahini', 'groundsesame', 'peanutbutter', 'almondbutter', 'raisin', 'apricot'];
+const VITC = ['orange', 'clementine', 'kiwi', 'strawberry', 'pepper', 'broccoli', 'tomato', 'mango', 'guava', 'papaya', 'pomelo', 'lemon', 'cauliflower', 'pineapple', 'raspberry', 'kohlrabi', 'cabbage', 'lychee'];
+const IRON_TARGET = 2;
+const ironLevel = (id) => (IRON_HIGH.includes(id) ? 2 : IRON_MED.includes(id) ? 1 : 0);
+
+function ironToday() {
+  const t0 = startOfDay(Date.now());
+  const logs = kidLogs().filter((l) => !l.seed && l.ts >= t0 && ironLevel(l.foodId) && !(l.symptoms || []).length);
+  // ארוחה = טעימות שנרשמו בהפרש של פחות משעה נחשבות מנה אחת
+  const meals = [];
+  [...logs].sort((a, b) => a.ts - b.ts).forEach((l) => { if (!meals.length || l.ts - meals[meals.length - 1] > 60 * 60 * 1000) meals.push(l.ts); });
+  return { logs, servings: meals.length, foods: [...new Set(logs.map((l) => l.foodId))] };
+}
+
+function ironSuggestions(exclude, n = 4) {
+  const blocked = (f) => f.allergen && ['notStarted', 'suspected'].includes(allergenInfo(f.allergen).status);
+  const tried = (id) => logsFor(id).length > 0;
+  return [...IRON_HIGH, ...IRON_MED].map(foodById).filter((f) => f && !exclude.includes(f.id) && !blocked(f))
+    .sort((a, b) => (tried(b.id) - tried(a.id)) || (ironLevel(b.id) - ironLevel(a.id)))
+    .slice(0, n);
+}
+
+function ironCardHTML() {
+  const age = ageMonths();
+  if (age === null || age < 5.5) return '';
+  const it = ironToday();
+  const done = Math.min(it.servings, IRON_TARGET);
+  const sugg = done < IRON_TARGET ? ironSuggestions(it.foods) : [];
+  const vc = VITC.map(foodById).filter((f) => f && logsFor(f.id).length).slice(0, 3);
+  const vcText = (vc.length ? vc : VITC.slice(0, 3).map(foodById).filter(Boolean)).map((f) => f.name).join(L(', ', ', '));
+  return `<section class="card iron-card">
+    <div class="card-head"><h3>💪 ${L('ברזל היום', 'Iron today')}</h3><span class="iron-dots" aria-label="${done}/${IRON_TARGET}">${Array.from({ length: IRON_TARGET }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</span></div>
+    <p class="small" style="margin:0 0 8px">${done >= IRON_TARGET
+      ? L(`מעולה! ${it.servings} ארוחות עם ברזל היום 🎉`, `Great! ${it.servings} iron-rich meals today 🎉`)
+      : done ? L(`ארוחה אחת עם ברזל – עוד אחת ומסיימים להיום`, `One iron-rich meal – one more for today`)
+      : L('מומלץ מזון עשיר בברזל בשתי ארוחות ביום', 'Aim for iron-rich food at two meals a day')}</p>
+    ${it.foods.length ? `<div class="iron-eaten">${it.foods.map(foodById).filter(Boolean).map((f) => `<span class="plan-chip done">${foodIcon(f)} ${esc(f.name)} ✓</span>`).join('')}</div>` : ''}
+    ${sugg.length ? `<div class="iron-sugg">${sugg.map((f) => `<button class="iron-food" data-food="${f.id}">${foodIcon(f)}<span>${esc(f.name)}</span>${ironLevel(f.id) === 2 ? '<em>💪💪</em>' : '<em>💪</em>'}</button>`).join('')}</div>` : ''}
+    <p class="small muted" style="margin:8px 0 0">🍊 ${L(`ויטמין C באותה ארוחה מכפיל את ספיגת הברזל – למשל ${vcText}`, `Vitamin C at the same meal boosts iron absorption – e.g. ${vcText}`)}</p>
+    <details class="iron-why"><summary>${L('למה ברזל כל כך חשוב?', 'Why is iron so important?')}</summary>
+      <ul class="small">
+        <li>${L('מאגרי הברזל שהתינוק נולד איתם מתרוקנים בסביבות גיל 6 חודשים, וחלב אם לבדו לא מספיק אחר כך.', 'The iron stores babies are born with run low around 6 months, and breast milk alone isn’t enough after that.')}</li>
+        <li>${L('ברזל חיוני להתפתחות המוח. מחסור נפוץ בגיל 6–24 חודשים.', 'Iron is essential for brain development. Deficiency is common between 6 and 24 months.')}</li>
+        <li>${L('ברזל מבשר, עוף ודגים נספג הכי טוב. מקטניות, טופו וביצים – לשלב עם ויטמין C.', 'Iron from meat, poultry and fish is absorbed best. From legumes, tofu and eggs – pair with vitamin C.')}</li>
+        <li>${L('חלב פרה כמשקה מגיל שנה בלבד, ולא יותר מ-2 כוסות ביום – הוא פוגע בספיגת הברזל.', 'Cow’s milk as a drink only from age 1, and no more than 2 cups a day – it reduces iron absorption.')}</li>
+      </ul>
+    </details>
+  </section>`;
+}
+
+/* ===================== עזרה ראשונה בחנק ===================== */
+let chokeAge = null; // 'infant' (עד שנה) / 'child' (מעל שנה)
+
+function chokingHTML() {
+  if (!chokeAge) chokeAge = (ageMonths() ?? 0) >= 12 ? 'child' : 'infant';
+  const inf = chokeAge === 'infant';
+  const step = (n, icon, title, text) => `<li class="ch-step"><span class="ch-n">${n}</span><div><b>${icon} ${title}</b><p>${text}</p></div></li>`;
+  return `${subHead(L('🆘 חנק – עזרה ראשונה', '🆘 Choking – first aid'))}
+  <a class="sos-call" href="tel:101"><span>📞</span><span><b>${L('חייגו 101 – מד״א', 'Call emergency services')}</b><small>${L('אם אפשר – מישהו אחר מחייג ושמים על רמקול', 'If possible, someone else calls – put it on speaker')}</small></span></a>
+  ${IS_EN ? '<p class="small muted" style="text-align:center;margin-top:-4px">101 in Israel · 911 US · 999/112 UK/EU – use your local number</p>' : ''}
+
+  <h3 class="section-title">${L('השתנקות או חנק?', 'Gagging or choking?')}</h3>
+  <div class="ch-compare">
+    <div class="ch-col ok"><b>😮‍💨 ${L('השתנקות (רפלקס הקאה)', 'Gagging')}</b><small>${L('נורמלי ובטוח – חלק מהלמידה', 'Normal and safe – part of learning')}</small>
+      <ul><li>${L('משתעל/ת, נשמע/ת', 'Coughing, making noise')}</li><li>${L('פנים אדומות, עיניים דומעות', 'Red face, watery eyes')}</li><li>${L('לשון בחוץ, פלט אוכל', 'Tongue out, pushing food out')}</li></ul>
+      <p><b>${L('מה עושים:', 'What to do:')}</b> ${L('נשארים רגועים, לא מכניסים אצבע לפה, נותנים להתמודד לבד.', 'Stay calm, don’t put a finger in the mouth, let them work it out.')}</p></div>
+    <div class="ch-col bad"><b>🚨 ${L('חנק', 'Choking')}</b><small>${L('מצב חירום – פועלים מיד', 'Emergency – act now')}</small>
+      <ul><li>${L('שקט – לא בוכה ולא משתעל/ת', 'Silent – can’t cry or cough')}</li><li>${L('לא נושם/ת או צפצוף חלש', 'Not breathing, or weak wheeze')}</li><li>${L('שפתיים כחולות, מבט מבוהל', 'Blue lips, panicked look')}</li></ul>
+      <p><b>${L('מה עושים:', 'What to do:')}</b> ${L('מתחילים מיד בשלבים למטה ⬇️', 'Start the steps below now ⬇️')}</p></div>
+  </div>
+  <div class="card small">💡 ${L('משתעל/ת חזק? <b>לא מכים בגב</b> – משתעול עוזר להוציא. רק משגיחים מקרוב ומעודדים.', 'Coughing hard? <b>Don’t hit the back</b> – coughing helps clear it. Just watch closely and encourage.')}</div>
+
+  <div class="segment ch-seg"><button type="button" class="${inf ? 'on' : ''}" data-chage="infant">👶 ${L('עד גיל שנה', 'Under 1 year')}</button><button type="button" class="${inf ? '' : 'on'}" data-chage="child">🧒 ${L('מעל גיל שנה', 'Over 1 year')}</button></div>
+  <h3 class="section-title">${L('בהכרה, לא נושם/ת ולא משתעל/ת:', 'Conscious, can’t breathe or cough:')}</h3>
+  <ol class="ch-steps">
+    ${step(1, '📞', L('מזעיקים עזרה', 'Call for help'), L('צועקים לעזרה ומחייגים 101 על רמקול. לא מחכים – מתחילים מיד.', 'Shout for help and call emergency services on speaker. Don’t wait – start right away.'))}
+    ${inf
+      ? step(2, '✋', L('5 טפיחות גב', '5 back blows'), L('משכיבים את התינוק על הבטן לאורך האמה, ראש נמוך מהחזה, תומכים בלסת (לא בגרון). נותנים 5 מכות חזקות עם עקב כף היד בין השכמות.', 'Lay the baby face-down along your forearm, head lower than the chest, supporting the jaw (not the throat). Give 5 firm blows between the shoulder blades with the heel of your hand.'))
+        + step(3, '☝️', L('5 לחיצות חזה', '5 chest thrusts'), L('הופכים את התינוק על הגב על האמה השנייה, ראש נמוך. 2 אצבעות במרכז החזה, מעט מתחת לקו הפטמות. לוחצים 5 פעמים בחוזקה, כ-4 ס״מ לעומק.', 'Turn the baby face-up on your other forearm, head low. Put 2 fingers in the center of the chest, just below the nipple line. Press firmly 5 times, about 4 cm (1.5 in) deep.'))
+      : step(2, '✋', L('5 טפיחות גב', '5 back blows'), L('מטים את הילד/ה קדימה ותומכים בחזה ביד אחת. נותנים 5 מכות חזקות עם עקב כף היד בין השכמות.', 'Lean the child forward, supporting the chest with one hand. Give 5 firm blows between the shoulder blades with the heel of your hand.'))
+        + step(3, '✊', L('5 לחיצות בטן (היימליך)', '5 abdominal thrusts (Heimlich)'), L('עומדים או כורעים מאחור, אגרוף מעל הטבור ומתחת לצלעות, היד השנייה עוטפת אותו. מושכים בחדות פנימה ולמעלה, 5 פעמים.', 'Stand or kneel behind, fist above the navel and below the ribs, other hand over it. Pull sharply inward and upward, 5 times.'))}
+    ${step(4, '🔁', L('חוזרים', 'Repeat'), L(`ממשיכים לסירוגין 5 טפיחות גב + 5 ${inf ? 'לחיצות חזה' : 'לחיצות בטן'} עד שהחפץ יוצא, ${inf ? 'התינוק' : 'הילד/ה'} בוכה/משתעל/ת – או מאבד/ת הכרה.`, `Keep alternating 5 back blows + 5 ${inf ? 'chest' : 'abdominal'} thrusts until the object comes out, they cry or cough – or they become unresponsive.`))}
+  </ol>
+  <div class="warn-banner small">🚫 ${L('<b>לא מכניסים אצבע ללוע "בעיוורון"</b> – זה עלול לדחוף את החפץ פנימה. מוציאים רק חפץ שרואים בבירור.', '<b>No blind finger sweeps</b> – they can push the object deeper. Only remove an object you can clearly see.')}</div>
+
+  <h3 class="section-title">😶 ${L('איבד/ה הכרה:', 'If they become unresponsive:')}</h3>
+  <ol class="ch-steps">
+    ${step(1, '🛏️', L('משכיבים על משטח קשה', 'Lay on a firm surface'), L('מוודאים ש-101 על הקו – המוקדן/ית ידריך/תדריך אתכם.', 'Make sure emergency services are on the line – the dispatcher will guide you.'))}
+    ${step(2, '💗', L('30 לחיצות חזה', '30 chest compressions'), inf ? L('2 אצבעות במרכז החזה, כ-4 ס״מ לעומק, בקצב 100–120 בדקה.', '2 fingers in the center of the chest, about 4 cm deep, 100–120 per minute.') : L('עקב כף יד אחת במרכז החזה, כ-5 ס״מ לעומק, בקצב 100–120 בדקה.', 'Heel of one hand in the center of the chest, about 5 cm deep, 100–120 per minute.'))}
+    ${step(3, '👀', L('מסתכלים בפה', 'Look in the mouth'), L('רואים את החפץ? מוציאים אותו. לא רואים – לא מחפשים באצבע.', 'See the object? Remove it. Can’t see it – don’t search with a finger.'))}
+    ${step(4, '🌬️', L('2 הנשמות', '2 rescue breaths'), inf ? L('מטים מעט את הראש לאחור, מכסים בפה את הפה והאף של התינוק ונושפים קלות עד שהחזה עולה.', 'Tilt the head back slightly, cover the baby’s mouth and nose with your mouth and breathe gently until the chest rises.') : L('מטים את הראש לאחור, סוגרים את האף ונושפים לפה עד שהחזה עולה.', 'Tilt the head back, pinch the nose and breathe into the mouth until the chest rises.'))}
+    ${step(5, '🔁', L('ממשיכים', 'Continue'), L('30 לחיצות + 2 הנשמות, עד שמגיעה עזרה או שמתחיל/ה לנשום.', '30 compressions + 2 breaths, until help arrives or they start breathing.'))}
+  </ol>
+  <div class="card small">🩺 ${L('גם אם הכל הסתדר – <b>פונים לרופא/ה</b> אחרי אירוע חנק, במיוחד אם נדרשו לחיצות.', 'Even if it resolved – <b>see a doctor</b> after a choking episode, especially if thrusts were needed.')}</div>
+
+  <details class="guide"><summary><span style="font-size:22px">🛡️</span>${L('איך מונעים חנק', 'Preventing choking')}</summary>
+    <ul>
+      <li>${L('אוכלים רק בישיבה זקופה, בכיסא, ותמיד בהשגחה – לא בהליכה, במשחק או ברכב.', 'Eat only sitting upright in a chair, always supervised – not walking, playing or in the car.')}</li>
+      <li>${L('ענבים, עגבניות שרי ודובדבנים – חותכים לרבעים לאורך.', 'Grapes, cherry tomatoes and cherries – cut into quarters lengthwise.')}</li>
+      <li>${L('אגוזים ובוטנים שלמים – לא עד גיל 5. רק טחונים או כממרח דק.', 'Whole nuts and peanuts – not until age 5. Only ground or as a thin spread.')}</li>
+      <li>${L('נקניקיות – פרוסות לאורך ולא עיגולים. ירקות קשים – מבשלים עד שנמעכים בין האצבעות.', 'Hot dogs – sliced lengthwise, not in rounds. Hard vegetables – cook until they squish between your fingers.')}</li>
+      <li>${L('בלי פופקורן, סוכריות קשות ומסטיקים בגיל הזה.', 'No popcorn, hard candy or gum at this age.')}</li>
+      <li>${L('מוצרים מסומנים ב-⚠️ באפליקציה דורשים תשומת לב מיוחדת לצורת ההגשה.', 'Foods marked ⚠️ in the app need extra care in how they’re served.')}</li>
+    </ul></details>
+  <p class="small muted" style="text-align:center;margin-top:14px">${L('המידע מבוסס על הנחיות מד״א, הצלב האדום ו-AHA, ואינו מחליף קורס עזרה ראשונה לתינוקות – מומלץ מאוד לעשות אחד.', 'Based on Red Cross and AHA guidance. It doesn’t replace an infant first-aid course – taking one is highly recommended.')}</p>`;
+}
+
+/* ===================== כרטיס הישג לשיתוף ===================== */
+function shareCardOptions() {
+  const c = badgeContext();
+  const kid = activeKid();
+  const intro = activeAllergens().filter((k) => ['introducing', 'maintaining'].includes(allergenInfo(k).status)).length;
+  const lastBadge = BADGES.filter((b) => kid?.badges?.[b.id]).sort((a, b) => kid.badges[b.id] - kid.badges[a.id])[0];
+  const name = babyName();
+  const opts = [{ id: 'foods', e: '🥄', label: L('מאכלים', 'Foods'), head: L(G(`${name} טעמ·ה ${c.foods.size} מאכלים!`), `${name} has tasted ${c.foods.size} foods!`) }];
+  if (intro) opts.push({ id: 'allergens', e: '⭐', label: L('אלרגנים', 'Allergens'), head: L(G(`${name} הכיר·ה ${intro} אלרגנים!`), `${name} has met ${intro} allergens!`) });
+  if (lastBadge) opts.push({ id: 'badge', e: lastBadge.e, label: L('הישג אחרון', 'Latest badge'), head: L(`🏅 ${G(lastBadge.t)}!`, `🏅 ${lastBadge.t}!`), sub: L(G(lastBadge.d), lastBadge.d) });
+  return { opts, c, intro };
+}
+
+async function drawShareCard(canvas, opt, info) {
+  const W = 1080, H = 1350;
+  canvas.width = W; canvas.height = H;
+  const x = canvas.getContext('2d');
+  try { await Promise.all(['800 64px Rubik', '700 40px Rubik', '500 34px Rubik'].map((f) => document.fonts.load(f))); } catch { /* ממשיכים עם גופן ברירת מחדל */ }
+  x.direction = IS_EN ? 'ltr' : 'rtl';
+  const g = x.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#ffb199'); g.addColorStop(0.55, '#ff8a65'); g.addColorStop(1, '#b08cff');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // עיגולים דקורטיביים
+  x.fillStyle = 'rgba(255,255,255,.12)';
+  [[120, 140, 160], [980, 260, 120], [900, 1220, 200], [140, 1180, 90]].forEach(([cx, cy, r]) => { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill(); });
+  x.textAlign = 'center'; x.fillStyle = '#fff';
+  x.font = '700 40px Rubik, sans-serif';
+  x.fillText('🥄 Baby Bis', W / 2, 100);
+
+  // אווטאר
+  const R = 190, AX = W / 2, AY = 360;
+  x.save(); x.shadowColor = 'rgba(0,0,0,.18)'; x.shadowBlur = 30;
+  x.fillStyle = state.avatar?.frame || '#fff'; x.beginPath(); x.arc(AX, AY, R + 14, 0, Math.PI * 2); x.fill(); x.restore();
+  x.save(); x.beginPath(); x.arc(AX, AY, R, 0, Math.PI * 2); x.clip();
+  x.fillStyle = '#fff4ec'; x.fillRect(AX - R, AY - R, R * 2, R * 2);
+  if (state.avatar?.img) {
+    await new Promise((res) => { const im = new Image(); im.onload = () => { x.drawImage(im, AX - R, AY - R, R * 2, R * 2); res(); }; im.onerror = res; im.src = state.avatar.img; });
+  } else {
+    x.font = `${R * 1.3}px sans-serif`; x.textBaseline = 'middle'; x.fillText(state.avatar?.emoji || '👶', AX, AY + 10); x.textBaseline = 'alphabetic';
+  }
+  x.restore();
+  if (state.avatar?.sticker) { x.font = '110px sans-serif'; x.fillText(state.avatar.sticker, AX + R * 0.78, AY - R * 0.62); }
+
+  // כותרת
+  x.fillStyle = '#fff';
+  const fit = (text, size, weight, maxW) => { let s = size; do { x.font = `${weight} ${s}px Rubik, sans-serif`; s -= 2; } while (x.measureText(text).width > maxW && s > 24); };
+  fit(opt.head, 76, 800, W - 120);
+  x.shadowColor = 'rgba(0,0,0,.15)'; x.shadowBlur = 12;
+  x.fillText(opt.head, W / 2, 680);
+  x.shadowBlur = 0;
+  if (opt.sub) { x.font = '500 38px Rubik, sans-serif'; x.fillText(opt.sub, W / 2, 740); }
+
+  // סטטיסטיקות
+  const stats = [[info.c.foods.size, L('מאכלים', 'foods')], [`${info.intro}/${activeAllergens().length}`, L('אלרגנים', 'allergens')], [Object.keys(activeKid()?.badges || {}).length, L('הישגים', 'badges')]];
+  const bw = 280, gap = 30, sy = 800, bh = 170;
+  stats.forEach(([v, l], i) => {
+    const idx = IS_EN ? i : stats.length - 1 - i;
+    const bx = W / 2 - (bw * 3 + gap * 2) / 2 + idx * (bw + gap);
+    x.fillStyle = 'rgba(255,255,255,.22)';
+    x.beginPath(); x.roundRect ? x.roundRect(bx, sy, bw, bh, 34) : x.rect(bx, sy, bw, bh); x.fill();
+    x.fillStyle = '#fff'; x.font = '800 70px Rubik, sans-serif'; x.fillText(String(v), bx + bw / 2, sy + 90);
+    x.font = '500 34px Rubik, sans-serif'; x.fillText(l, bx + bw / 2, sy + 140);
+  });
+
+  // אימוג׳י של מאכלים שנטעמו
+  const emojis = [...info.c.foods].map(foodById).filter((f) => f?.emoji && !/^[\u{1F7E0}-\u{1F7EB}\u26AA\u26AB\u{1F534}\u{1F535}]/u.test(f.emoji)).map((f) => f.emoji).filter((e, i, arr) => arr.indexOf(e) === i).slice(-14);
+  if (emojis.length) {
+    x.font = '64px sans-serif';
+    const rowW = Math.min(emojis.length, 7) * 92;
+    emojis.forEach((e, i) => { const row = Math.floor(i / 7), col = i % 7; const n = Math.min(emojis.length - row * 7, 7); x.fillText(e, W / 2 - (n * 92) / 2 + 46 + col * 92, 1080 + row * 92); });
+    void rowW;
+  }
+  x.font = '500 30px Rubik, sans-serif'; x.fillStyle = 'rgba(255,255,255,.9)';
+  x.fillText(`${ageText(state.baby?.birth)} · ${new Date().toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' })}`, W / 2, H - 50);
+}
+
+function openShareCard(pref) {
+  const info = shareCardOptions();
+  let opt = info.opts.find((o) => o.id === pref) || info.opts[0];
+  openModal(`
+    <h2 class="sheet-title">📤 ${L('כרטיס לשיתוף', 'Share card')}</h2>
+    <div class="chips sc-opts">${info.opts.map((o) => `<button class="chip ${o.id === opt.id ? 'active' : ''}" data-sc="${o.id}">${o.e} ${o.label}</button>`).join('')}</div>
+    <canvas id="scCanvas" class="sc-canvas"></canvas>
+    <div class="sheet-foot"><button class="btn" id="scShare">📤 ${L('שיתוף', 'Share')}</button><button class="btn ghost" id="scSave">⬇️ ${L('שמירה', 'Save')}</button></div>`);
+  const b = $('#modalBody'), cv = $('#scCanvas', b);
+  const draw = () => drawShareCard(cv, opt, info);
+  draw();
+  $$('[data-sc]', b).forEach((btn) => btn.onclick = () => { opt = info.opts.find((o) => o.id === btn.dataset.sc); $$('[data-sc]', b).forEach((y) => y.classList.toggle('active', y === btn)); draw(); });
+  const blob = () => new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.9));
+  const fname = `baby-bis-${new Date().toISOString().slice(0, 10)}.jpg`;
+  const download = async () => { const bl = await blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = fname; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+  $('#scSave', b).onclick = download;
+  $('#scShare', b).onclick = async () => {
+    const file = new File([await blob()], fname, { type: 'image/jpeg' });
+    try {
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text: L(`${opt.head} 💛 (Baby Bis)`, `${opt.head} 💛 (Baby Bis)`) });
+      else { await download(); toast(L('התמונה נשמרה – אפשר לשלוח אותה בוואטסאפ 📲', 'Image saved – send it on WhatsApp 📲')); }
+    } catch (ex) { if (ex?.name !== 'AbortError') download(); }
+  };
 }
