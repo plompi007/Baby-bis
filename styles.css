@@ -868,3 +868,19 @@ details.past-days summary { cursor: pointer; color: var(--muted); font-weight: 5
 .sc-canvas { width: 100%; height: auto; aspect-ratio: 1080 / 1350; border-radius: 18px; box-shadow: var(--shadow); display: block; margin: 8px 0 4px; }
 .sc-opts { margin-top: 4px; }
 .share-cta { margin-bottom: 14px; background: linear-gradient(135deg, #ff8a65, #b08cff); }
+
+/* ===== מנה עם כמה מרכיבים ===== */
+.pk-mode { margin-bottom: 8px; }
+.pk-mode button { font-size: 14px; }
+.pick-tile.sel { outline: 3px solid var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--card)); position: relative; }
+.pick-tile.sel::after { content: '✓'; position: absolute; top: 4px; inset-inline-end: 6px; background: var(--primary); color: #fff; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; font-weight: 800; display: grid; place-items: center; }
+.pick-tile { position: relative; }
+.meal-tile small { font-size: 10px; color: var(--muted); }
+.pk-foot { flex-direction: column; align-items: stretch; gap: 8px; }
+.pk-foot:not([hidden]) { display: flex; }
+.pk-sel { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.sel-chip { flex: none; border: 0; border-radius: 999px; background: var(--line); padding: 5px 10px; font: inherit; font-size: 13px; color: var(--ink); white-space: nowrap; }
+.sel-chip .fi { font-size: 1.1em; }
+.save-meal { display: flex; gap: 8px; align-items: center; margin: 12px 0 4px; font-size: 14px; font-weight: 500; }
+.save-meal input { width: 20px; height: 20px; accent-color: var(--primary); }
+#mlMore { margin: 6px 0 2px; }

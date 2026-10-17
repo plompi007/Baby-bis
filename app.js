@@ -13,6 +13,7 @@ const defaultState = () => withKids({
   kids: [],                   // [{ id, baby: { name, birth, gender }, avatar, cleared }]
   logs: [],                   // { id, kid, foodId, ts, liked, amount, texture, symptoms:[], notes, photo }
   customFoods: [],
+  meals: [],                  // מנות קבועות: { id, name, emoji, ingredients:[], texture }
   favNotes: [],
   favRecipes: [],
   settings: { disabled: ['shellfish', 'macadamia', 'brazil', 'pinenut'], targets: {}, notify: false, lastNotified: '' },
@@ -683,40 +684,75 @@ function quickLog(foodId) {
 }
 
 // חלון בחירת מוצר (מהכפתור ＋): מומלצים, אחרונים, וכל המוצרים עם חיפוש
-function openPicker() {
+function openPicker(opts = {}) {
   const due = reminders().filter((r) => ['overdue', 'soon'].includes(r.kind)).map((r) => {
     const l = allergenLogs(r.info.key).find((x) => !x.seed) || allergenLogs(r.info.key)[0];
     return foodById(l?.foodId) || foodById(r.info.a.rep);
   }).filter(Boolean);
   const recentIds = [...new Set(kidLogs().filter((l) => !l.seed).sort((a, b) => b.ts - a.ts).map((l) => l.foodId))].slice(0, 8);
   const recent = recentIds.map(foodById).filter(Boolean);
-  const tile = (f) => `<button class="pick-tile ${f.allergen ? 'is-allergen' : ''}" data-pick="${f.id}"><span class="anim-${f.anim}" style="${animStyle(f)}">${foodIcon(f)}</span><b>${esc(f.name)}</b></button>`;
+  let multi = !!opts.multi;
+  const sel = new Set(opts.selected || []);
+  const tile = (f) => `<button class="pick-tile ${f.allergen ? 'is-allergen' : ''} ${sel.has(f.id) ? 'sel' : ''}" data-pick="${f.id}"><span class="anim-${f.anim}" style="${animStyle(f)}">${foodIcon(f)}</span><b>${esc(f.name)}</b></button>`;
+  const mealTile = (m) => `<button class="pick-tile meal-tile" data-meal="${m.id}"><span>${m.emoji || '🍽️'}</span><b>${esc(m.name)}</b><small>${m.ingredients.length} ${L('מרכיבים', 'items')}</small></button>`;
   let cat = 'all';
   const list = (q) => allFoods().filter((f) => (cat === 'all' || f.cat === cat) && (!q || matchQ(f.name, q)));
+  const meals = state.meals || [];
   openModal(`
     <h2 class="sheet-title">${L(G(`מה ${esc(babyName())} טעמ·ה?`), `What did ${esc(babyName())} taste?`)}</h2>
+    <div class="segment pk-mode"><button type="button" data-mode="one" class="${multi ? '' : 'on'}">🥄 ${L('מאכל אחד', 'One food')}</button><button type="button" data-mode="multi" class="${multi ? 'on' : ''}">🍽️ ${L('מנה עם כמה מרכיבים', 'A dish with several items')}</button></div>
+    <p class="small muted pk-hint" ${multi ? '' : 'hidden'}>${L('סמנו את כל המרכיבים של המנה (למשל פנקייק: שיבולת שועל, ביצה, בננה...) ולחצו "המשך"', 'Tick every ingredient in the dish (e.g. pancake: oats, egg, banana...) and tap "Continue"')}</p>
     <input class="search" id="pkSearch" type="search" placeholder="🔍 ${L('חיפוש מוצר...', 'Search foods...')}" enterkeyhint="search">
     <div id="pkTop">
+      ${meals.length ? `<h3 class="pk-head">⭐ ${L('המנות שלי', 'My dishes')}</h3><div class="pick-row">${meals.map(mealTile).join('')}</div>` : ''}
       ${due.length ? `<h3 class="pk-head">🔔 ${L('כדאי היום', 'Due today')}</h3><div class="pick-row">${due.map(tile).join('')}</div>` : ''}
       ${recent.length ? `<h3 class="pk-head">🕒 ${L('לאחרונה', 'Recent')}</h3><div class="pick-row">${recent.map(tile).join('')}</div>` : ''}
-      <button class="recipe-link" data-action="go-recipes">🍲 ${L('הכנתם מתכון? רישום כל המרכיבים יחד', 'Made a recipe? Log all ingredients at once')} ${FWD}</button>
+      <button class="recipe-link" data-action="go-recipes">🍲 ${L('הכנתם מתכון מהאפליקציה? רישום כל המרכיבים יחד', 'Made a recipe from the app? Log all ingredients at once')} ${FWD}</button>
       <h3 class="pk-head">🍽️ ${L('כל המוצרים', 'All foods')}</h3>
       <div class="chips">${[{ id: 'all', name: L('הכל', 'All'), emoji: '🍽️' }, ...CATEGORIES.filter((c) => c.id !== 'custom' || state.customFoods.length)].map((c) => `<button class="chip ${c.id === 'all' ? 'active' : ''}" data-pcat="${c.id}">${c.emoji} ${c.name}</button>`).join('')}</div>
     </div>
     <div class="pick-grid-all" id="pkGrid">${list('').map(tile).join('')}</div>
+    <div class="sheet-foot pk-foot" id="pkFoot" hidden>
+      <div class="pk-sel" id="pkSel"></div>
+      <button class="btn" id="pkGo"></button>
+    </div>
   `, (b) => {
     const grid = $('#pkGrid', b), top = $('#pkTop', b);
+    const syncTiles = () => $$('[data-pick]', b).forEach((x) => x.classList.toggle('sel', multi && sel.has(x.dataset.pick)));
+    const syncFoot = () => {
+      $('#pkFoot', b).hidden = !multi || !sel.size;
+      $('#pkSel', b).innerHTML = [...sel].map(foodById).filter(Boolean).map((f) => `<button type="button" class="sel-chip" data-unsel="${f.id}">${foodIcon(f)} ${esc(f.name)} ✕</button>`).join('');
+      $('#pkGo', b).textContent = L(`המשך עם ${sel.size} מרכיבים`, `Continue with ${sel.size} items`) + ` ${FWD}`;
+    };
     const refresh = () => {
       const q = $('#pkSearch', b).value.trim();
       $$('.pk-head, .pick-row, .recipe-link', top).forEach((x) => { x.hidden = !!q; });
       const items = list(q);
       grid.innerHTML = items.length ? items.map(tile).join('') : `<div class="empty small">${L(`לא מצאנו "${esc(q)}".`, `No match for "${esc(q)}".`)} <button class="link-btn" data-action="addfood-q">${L('להוסיף כמוצר חדש?', 'Add it as a new food?')}</button></div>`;
+      syncTiles();
+    };
+    const setMode = (m) => {
+      multi = m === 'multi';
+      $$('[data-mode]', b).forEach((x) => x.classList.toggle('on', x.dataset.mode === m));
+      $('.pk-hint', b).hidden = !multi;
+      syncTiles(); syncFoot();
     };
     $('#pkSearch', b).oninput = refresh;
+    $('#pkGo', b).onclick = () => openMealLog({ name: opts.name || '', ingredients: [...sel], mealId: opts.mealId });
+    syncTiles(); syncFoot();
     b.onclick = (e) => {
-      const t = e.target.closest('[data-pick],[data-pcat],[data-action]');
+      const t = e.target.closest('[data-pick],[data-pcat],[data-action],[data-mode],[data-meal],[data-unsel]');
       if (!t) return;
-      if (t.dataset.pick) return openLog(t.dataset.pick);
+      if (t.dataset.mode) return setMode(t.dataset.mode);
+      if (t.dataset.meal) { const m = meals.find((x) => x.id === t.dataset.meal); return m && openMealLog({ ...m, mealId: m.id }); }
+      if (t.dataset.unsel) { sel.delete(t.dataset.unsel); syncTiles(); return syncFoot(); }
+      if (t.dataset.pick) {
+        if (!multi) return openLog(t.dataset.pick);
+        const id = t.dataset.pick;
+        if (sel.has(id)) sel.delete(id); else sel.add(id);
+        if (sel.has(id) && $('#pkSearch', b).value) { $('#pkSearch', b).value = ''; refresh(); }
+        syncTiles(); return syncFoot();
+      }
       if (t.dataset.pcat) { cat = t.dataset.pcat; $$('[data-pcat]', b).forEach((x) => x.classList.toggle('active', x === t)); return refresh(); }
       if (t.dataset.action === 'go-recipes') { closeModal(); return go('recipes'); }
       if (t.dataset.action === 'addfood-q') return openAddFood($('#pkSearch', b).value.trim());
@@ -851,20 +887,35 @@ function openRecipe(id) {
 
 // רישום טעימה של כל מרכיבי המתכון בבת אחת
 function openRecipeLog(r) {
-  const blockers = recipeBlockers(r);
+  openMealLog({ name: r.name, emoji: r.emoji, ingredients: r.ingredients, texture: RECIPE_TEXTURE[r.texture], recipe: r });
+}
+
+// רישום מנה עם כמה מרכיבים – ממתכון, ממנה שמורה או מבחירה חופשית
+function openMealLog(m) {
+  const recipe = m.recipe;
+  const saved = m.mealId ? (state.meals || []).find((x) => x.id === m.mealId) : null;
+  const blocked = (fid) => { const a = foodById(fid)?.allergen; return a && ['notStarted', 'suspected'].includes(allergenInfo(a).status); };
+  const ings = m.ingredients.filter(foodById);
+  const blockers = [...new Set(ings.filter(blocked).map((fid) => foodById(fid).allergen))];
+  const emoji = m.emoji || (ings[0] && foodById(ings[0]).emoji) || '🍽️';
   const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   openModal(`
     <div class="detail-hero" style="padding:0">
-      <span class="big anim-bounce" style="font-size:64px">${r.emoji}</span>
-      <h2 style="font-size:22px">${esc(r.name)}</h2>
-      <div class="muted small">${L('כל מרכיב שתסמנו יירשם כטעימה', 'Every ingredient you tick is logged as a taste')}</div>
+      <span class="big anim-bounce" style="font-size:64px">${emoji}</span>
+      ${recipe ? `<h2 style="font-size:22px">${esc(m.name)}</h2>` : saved ? `<h2 style="font-size:22px">${esc(saved.name)}</h2>` : `<h2 style="font-size:22px">${L('מנה עם כמה מרכיבים', 'A dish with several items')}</h2>`}
+      <div class="muted small">${L('כל מרכיב שמסומן יירשם כטעימה', 'Every ticked ingredient is logged as a taste')}</div>
     </div>
     <form class="form" id="rlForm">
+      ${recipe || saved ? '' : `<label for="mlName">${L('שם המנה', 'Dish name')} <span class="muted small">(${L('לא חובה', 'optional')})</span></label>
+      <input type="text" id="mlName" maxlength="40" value="${esc(m.name || '')}" placeholder="${L('למשל: פנקייק בננה', 'e.g. banana pancake')}">`}
       <label>${L(G(`מה ${esc(babyName())} אכל·ה?`), `What did ${esc(babyName())} eat?`)}</label>
-      <div class="symptoms ing-pick">${r.ingredients.map((fid) => { const f = foodById(fid); return `<label><input type="checkbox" value="${fid}" ${blockers.includes(f.allergen) ? '' : 'checked'}>${foodIcon(f)} ${esc(f.name)}</label>`; }).join('')}</div>
-      ${blockers.length ? `<div class="warn-banner small">⚠️ ${L('אלרגן שעוד לא הוכר לא סומן. סמנו אותו רק אם הוא אכן נאכל.', 'An allergen that isn’t introduced yet was left unticked. Tick it only if it was actually eaten.')}</div>` : ''}
+      <div class="symptoms ing-pick">${ings.map((fid) => { const f = foodById(fid); return `<label><input type="checkbox" value="${fid}" ${recipe && blocked(fid) ? '' : 'checked'}>${foodIcon(f)} ${esc(f.name)}</label>`; }).join('')}</div>
+      ${recipe ? '' : `<button type="button" class="link-btn" id="mlMore">＋ ${L('עוד מרכיב', 'Add an ingredient')}</button>`}
+      ${blockers.length ? `<div class="warn-banner small">⚠️ ${recipe ? L('אלרגן שעוד לא הוכר לא סומן. סמנו אותו רק אם הוא אכן נאכל.', 'An allergen that isn’t introduced yet was left unticked. Tick it only if it was actually eaten.') : L(`${blockers.map((k) => ALLERGENS[k].name).join(', ')} עוד לא הוכר. מומלץ להכיר אלרגן חדש קודם לבד, בכמות קטנה – כדי לדעת ממה הייתה תגובה אם תהיה.`, `${blockers.map((k) => ALLERGENS[k].name).join(', ')} isn’t introduced yet. It’s best to introduce a new allergen on its own first, in a small amount – so you’ll know what caused any reaction.`)}</div>` : ''}
       <label>${L('איך היה?', 'How was it?')} <span class="muted small">(${L('לא חובה', 'optional')})</span></label>
       <div class="choice-row reactions" data-group="liked">${REACTIONS.map((x) => `<button type="button" class="choice" data-val="${x.id}"><span class="ce">${x.e}</span>${G(x.t)}</button>`).join('')}</div>
+      ${recipe ? '' : `<label>${L('מרקם', 'Texture')} <span class="muted small">(${L('לא חובה', 'optional')})</span></label>
+      <div class="choice-row tex-row" data-group="texture">${TEXTURES.map((x) => `<button type="button" class="choice ${m.texture === x.id ? 'on' : ''}" data-val="${x.id}"><span class="ce">${x.e}</span>${x.t}</button>`).join('')}</div>`}
       <div class="opt-rows">
         <button type="button" class="opt-row" data-toggle="time">🕒 <span>${L('עכשיו', 'Now')}</span><em>${L('שינוי', 'Change')}</em></button>
         <div class="opt-body" data-body="time" hidden><input type="datetime-local" id="rlTime" value="${now.toISOString().slice(0, 16)}"></div>
@@ -874,15 +925,25 @@ function openRecipeLog(r) {
           <div id="emergencyBox"></div>
         </div>
       </div>
+      ${recipe ? '' : saved
+        ? `<button type="button" class="link-btn" id="mlForget" style="color:var(--red)">🗑️ ${L('הסרה מ"המנות שלי"', 'Remove from “My dishes”')}</button>`
+        : `<label class="save-meal"><input type="checkbox" id="mlSave"> ⭐ ${L('לשמור ב"המנות שלי" – בפעם הבאה ברישום בלחיצה אחת', 'Save to “My dishes” – one tap next time')}</label>`}
       <div class="sheet-foot"><button class="btn" type="submit">${L('שמירה ✓', 'Save ✓')}</button></div>
     </form>
   `, (b) => {
-    $('.choice-row', b).addEventListener('click', (e) => {
+    $$('.choice-row', b).forEach((row) => row.addEventListener('click', (e) => {
       const c = e.target.closest('.choice'); if (!c) return;
       const wasOn = c.classList.contains('on');
-      $$('.choice', e.currentTarget).forEach((x) => x.classList.toggle('on', x === c && !wasOn));
-    });
+      $$('.choice', row).forEach((x) => x.classList.toggle('on', x === c && !wasOn));
+    }));
     $$('[data-toggle]', b).forEach((t) => t.onclick = () => { const body = $(`[data-body="${t.dataset.toggle}"]`, b); body.hidden = !body.hidden; });
+    const nameNow = () => $('#mlName', b)?.value.trim() || saved?.name || m.name || '';
+    $('#mlMore', b)?.addEventListener('click', () => openPicker({ multi: true, selected: $$('.ing-pick input', b).filter((x) => x.checked).map((x) => x.value), name: nameNow(), mealId: m.mealId }));
+    $('#mlName', b)?.addEventListener('input', () => { if ($('#mlName', b).value.trim() && $('#mlSave', b) && !$('#mlSave', b).dataset.touched) $('#mlSave', b).checked = true; });
+    $('#mlSave', b)?.addEventListener('change', (e) => { e.target.dataset.touched = '1'; });
+    $('#mlForget', b)?.addEventListener('click', () => {
+      state.meals = (state.meals || []).filter((x) => x.id !== saved.id); save(); closeModal(); toast(L('הוסר מהמנות שלי', 'Removed from My dishes'));
+    });
     $('.sym-pick', b).addEventListener('change', () => {
       const sel = $$('.sym-pick input:checked', b).map((x) => x.value);
       $('[data-toggle="sym"] em', b).textContent = sel.length ? L(`${sel.length} סומנו`, `${sel.length} selected`) : L('הכל תקין', 'All fine');
@@ -896,12 +957,22 @@ function openRecipeLog(r) {
       if (!foods.length) return toast(L('סמנו לפחות מרכיב אחד', 'Tick at least one ingredient'));
       const ts = $('[data-body="time"]', b).hidden ? Date.now() : (new Date($('#rlTime', b).value).getTime() || Date.now());
       const liked = $('[data-group="liked"] .on', b)?.dataset.val;
+      const texture = recipe ? m.texture : $('[data-group="texture"] .on', b)?.dataset.val;
       const symptoms = $$('.sym-pick input:checked', b).map((x) => x.value);
-      for (const foodId of foods) state.logs.push({ id: uid(), kid: activeKidId(), foodId, ts, liked, amount: 'meal', texture: RECIPE_TEXTURE[r.texture], symptoms, notes: `${L('מתוך:', 'From:')} ${r.name}` });
+      const name = nameNow();
+      const notes = name ? `${L('מתוך:', 'From:')} ${name}` : L('מנה משולבת', 'Mixed dish');
+      for (const foodId of foods) state.logs.push({ id: uid(), kid: activeKidId(), foodId, ts, liked, amount: 'meal', texture, symptoms, notes });
+      const listed = $$('.ing-pick input', b).map((x) => x.value);
+      if (saved && listed.join() !== saved.ingredients.join()) saved.ingredients = listed;
+      if ($('#mlSave', b)?.checked) {
+        state.meals = state.meals || [];
+        state.meals.push({ id: uid(), name: name || foods.map((id) => foodById(id).name).slice(0, 2).join(' + '), emoji, ingredients: $$('.ing-pick input', b).map((x) => x.value), texture: texture || null });
+      }
       save(); closeModal();
       if (!symptoms.length) checkBadges();
       if (symptoms.length) toast(L('נשמר. עקבו אחרי התסמינים והתייעצו עם רופא/ה 🩺', 'Saved. Watch the symptoms and consult a doctor 🩺'));
-      else celebrate(r.emoji, L(`${foods.length} טעימות נרשמו! 👩‍🍳`, `${foods.length} tastes logged! 👩‍🍳`));
+      else celebrate(emoji, L(`${foods.length} טעימות נרשמו! 👩‍🍳`, `${foods.length} tastes logged! 👩‍🍳`));
+      if ($('#mlSave', b)?.checked) setTimeout(() => toast(L('⭐ נשמר ב"המנות שלי"', '⭐ Saved to “My dishes”')), 1900);
       render();
     });
   });
