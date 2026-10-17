@@ -24,6 +24,7 @@ function authHTML() {
     <h2 dir="ltr">Baby Bis</h2>
     <p class="muted">${L('כל טעימה נספרת 💛', 'Every taste counts 💛')}</p>
     <button type="button" class="lang-pill" id="auLang">🌐 ${L('English', 'עברית')}</button>
+    ${installEnv() === 'inapp' ? `<div class="warn-banner small inapp-warn">⚠️ ${L('פתחתם מתוך וואטסאפ או אינסטגרם – כאן ההתחברות עם Google לא עובדת ואי אפשר להתקין. לחצו על <b>⋮</b> / <b>…</b> או על הכתובת למטה ← <b>פתיחה בדפדפן</b> (ספארי / כרום).', 'You opened this inside WhatsApp or Instagram – Google sign-in won’t work here and the app can’t be installed. Tap <b>⋮</b> / <b>…</b> or the address at the bottom → <b>Open in browser</b> (Safari / Chrome).')}<button type="button" class="link-btn" id="auCopyLink">🔗 ${L('העתקת הקישור', 'Copy the link')}</button></div>` : ''}
     <div class="card auth-card">
       <div class="segment">
         <button type="button" class="${authMode === 'register' ? 'on' : ''}" data-mode="register">${L('הרשמה', 'Sign up')}</button>
@@ -73,7 +74,12 @@ function bindAuth() {
       $('.auth-card').classList.remove('shake-x'); void $('.auth-card').offsetWidth; $('.auth-card').classList.add('shake-x');
     } finally { btn.disabled = false; }
   });
+  $('#auCopyLink')?.addEventListener('click', async () => {
+    const url = location.origin + location.pathname;
+    try { await navigator.clipboard.writeText(url); toast(L('הקישור הועתק – הדביקו בספארי או בכרום 📋', 'Link copied – paste it in Safari or Chrome 📋')); } catch { prompt(L('העתיקו את הקישור:', 'Copy the link:'), url); }
+  });
   $('#auGoogle')?.addEventListener('click', async () => {
+    if (installEnv() === 'inapp') { $('#auErr').textContent = L('Google לא מאפשרת להתחבר מתוך וואטסאפ / אינסטגרם. פתחו את הקישור בספארי או בכרום – או הירשמו כאן עם מייל וסיסמה.', 'Google doesn’t allow sign-in inside WhatsApp / Instagram. Open the link in Safari or Chrome – or sign up here with email and password.'); return; }
     try { await Cloud.google(); } catch (ex) { $('#auErr').textContent = ex.message; }
   });
   $('#auForgot')?.addEventListener('click', async () => {

@@ -823,3 +823,4 @@ details.past-days summary { cursor: pointer; color: var(--muted); font-weight: 5
 .inst-steps { padding-inline-start: 22px; }
 .inst-steps li { margin: 10px 0; line-height: 1.5; }
 .inst-steps li::marker { font-weight: 800; color: #7c6cf2; }
+.inapp-warn { text-align: start; margin-bottom: 12px; position: relative; z-index: 1; } .inapp-warn .link-btn { display: block; margin-top: 6px; }

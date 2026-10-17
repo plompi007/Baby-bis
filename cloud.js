@@ -200,6 +200,10 @@ const Cloud = (() => {
       'auth/too-many-requests': L('יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.', 'Too many attempts. Try again in a few minutes.'),
       'auth/network-request-failed': L('אין חיבור לאינטרנט', 'No internet connection'),
       'auth/popup-closed-by-user': L('החלון נסגר לפני סיום ההתחברות', 'The window closed before sign-in finished'),
+      'auth/operation-not-allowed': L('שיטת ההתחברות הזו עוד לא הופעלה באפליקציה. נסו בעוד כמה דקות, או התחברו עם Google.', 'This sign-in method isn’t enabled yet. Try again in a few minutes, or sign in with Google.'),
+      'auth/disallowed-useragent': L('Google לא מאפשרת להתחבר מתוך וואטסאפ / אינסטגרם. פתחו את הקישור בספארי או בכרום.', 'Google doesn’t allow sign-in inside WhatsApp / Instagram. Open the link in Safari or Chrome.'),
+      'auth/web-storage-unsupported': L('הדפדפן הזה חוסם התחברות. פתחו את הקישור בספארי או בכרום.', 'This browser blocks sign-in. Open the link in Safari or Chrome.'),
+      'auth/operation-not-supported-in-this-environment': L('אי אפשר להתחבר מכאן. פתחו את הקישור בספארי או בכרום.', 'Sign-in isn’t possible here. Open the link in Safari or Chrome.'),
       'auth/unauthorized-domain': L('הכתובת הזו לא מאושרת בהגדרות Firebase (Authorized domains).', 'This address isn’t authorized in Firebase settings (Authorized domains).'),
     };
     return new Error(m[e.code] || e.message || L('משהו השתבש, נסו שוב', 'Something went wrong, try again'));
