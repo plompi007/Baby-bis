@@ -53,7 +53,7 @@ const Cloud = (() => {
     try { triedRedirect = !!sessionStorage.getItem('bis-redirect'); sessionStorage.removeItem('bis-redirect'); } catch { /* ללא אחסון */ }
     const rr = await auth.getRedirectResult().catch((e) => { api.authError = heError(e).message; return null; });
     // חזרנו מגוגל בלי משתמש – כנראה הדפדפן חסם את ההתחברות בהפניה
-    if (triedRedirect && !rr?.user && !auth.currentUser && !api.authError) api.authError = L('ההתחברות עם Google לא הושלמה. נסו שוב, או הירשמו עם מייל וסיסמה.', 'Google sign-in didn’t complete. Try again, or sign up with email and password.');
+    if (triedRedirect && !rr?.user && !auth.currentUser && !api.authError) api.authError = L('ההתחברות עם Google לא הושלמה. נסו שוב – ואם זה חוזר, פתחו את האתר בספארי או בכרום.', 'Google sign-in didn’t complete. Try again – if it keeps happening, open the site in Safari or Chrome.');
     auth.onAuthStateChanged(async (u) => {
       stop();
       user = u;
@@ -207,7 +207,7 @@ const Cloud = (() => {
       'auth/user-cancelled': L('ההתחברות בוטלה', 'Sign-in was cancelled'),
       'auth/internal-error': L('תקלה זמנית בהתחברות. נסו שוב בעוד רגע.', 'Temporary sign-in problem. Try again in a moment.'),
       'auth/popup-closed-by-user': L('החלון נסגר לפני סיום ההתחברות', 'The window closed before sign-in finished'),
-      'auth/operation-not-allowed': L('שיטת ההתחברות הזו עוד לא הופעלה באפליקציה. נסו בעוד כמה דקות, או התחברו עם Google.', 'This sign-in method isn’t enabled yet. Try again in a few minutes, or sign in with Google.'),
+      'auth/operation-not-allowed': L('שיטת ההתחברות הזו לא פעילה. התחברו עם Google.', 'This sign-in method isn’t enabled. Sign in with Google.'),
       'auth/disallowed-useragent': L('Google לא מאפשרת להתחבר מתוך וואטסאפ / אינסטגרם. פתחו את הקישור בספארי או בכרום.', 'Google doesn’t allow sign-in inside WhatsApp / Instagram. Open the link in Safari or Chrome.'),
       'auth/web-storage-unsupported': L('הדפדפן הזה חוסם התחברות. פתחו את הקישור בספארי או בכרום.', 'This browser blocks sign-in. Open the link in Safari or Chrome.'),
       'auth/operation-not-supported-in-this-environment': L('אי אפשר להתחבר מכאן. פתחו את הקישור בספארי או בכרום.', 'Sign-in isn’t possible here. Open the link in Safari or Chrome.'),
