@@ -49,7 +49,11 @@ const Cloud = (() => {
       db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
     }
     auth.languageCode = 'he';
-    await auth.getRedirectResult().catch(() => {});
+    let triedRedirect = false;
+    try { triedRedirect = !!sessionStorage.getItem('bis-redirect'); sessionStorage.removeItem('bis-redirect'); } catch { /* ללא אחסון */ }
+    const rr = await auth.getRedirectResult().catch((e) => { api.authError = heError(e).message; return null; });
+    // חזרנו מגוגל בלי משתמש – כנראה הדפדפן חסם את ההתחברות בהפניה
+    if (triedRedirect && !rr?.user && !auth.currentUser && !api.authError) api.authError = L('ההתחברות עם Google לא הושלמה. נסו שוב, או הירשמו עם מייל וסיסמה.', 'Google sign-in didn’t complete. Try again, or sign up with email and password.');
     auth.onAuthStateChanged(async (u) => {
       stop();
       user = u;
@@ -199,6 +203,9 @@ const Cloud = (() => {
       'auth/invalid-login-credentials': L('המייל או הסיסמה שגויים', 'Wrong email or password'),
       'auth/too-many-requests': L('יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.', 'Too many attempts. Try again in a few minutes.'),
       'auth/network-request-failed': L('אין חיבור לאינטרנט', 'No internet connection'),
+      'auth/cancelled-popup-request': L('החלון נסגר לפני סיום ההתחברות', 'The window closed before sign-in finished'),
+      'auth/user-cancelled': L('ההתחברות בוטלה', 'Sign-in was cancelled'),
+      'auth/internal-error': L('תקלה זמנית בהתחברות. נסו שוב בעוד רגע.', 'Temporary sign-in problem. Try again in a moment.'),
       'auth/popup-closed-by-user': L('החלון נסגר לפני סיום ההתחברות', 'The window closed before sign-in finished'),
       'auth/operation-not-allowed': L('שיטת ההתחברות הזו עוד לא הופעלה באפליקציה. נסו בעוד כמה דקות, או התחברו עם Google.', 'This sign-in method isn’t enabled yet. Try again in a few minutes, or sign in with Google.'),
       'auth/disallowed-useragent': L('Google לא מאפשרת להתחבר מתוך וואטסאפ / אינסטגרם. פתחו את הקישור בספארי או בכרום.', 'Google doesn’t allow sign-in inside WhatsApp / Instagram. Open the link in Safari or Chrome.'),
@@ -232,10 +239,20 @@ const Cloud = (() => {
     register: wrap((email, pass) => auth.createUserWithEmailAndPassword(email.trim(), pass)),
     login: wrap((email, pass) => auth.signInWithEmailAndPassword(email.trim(), pass)),
     resetPassword: wrap((email) => auth.sendPasswordResetEmail(email.trim())),
-    google: wrap(() => {
+    // חלון קופץ קודם: התחברות בהפניה (redirect) לא עובדת בספארי (16.1+) ובכרום החדשים כשהאתר
+    // לא יושב על הדומיין של Firebase, כי הם חוסמים אחסון של צד שלישי. רק אם החלון נחסם – מנסים הפניה.
+    google: wrap(async () => {
       const p = new firebase.auth.GoogleAuthProvider();
-      const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-      return standalone ? auth.signInWithRedirect(p) : auth.signInWithPopup(p);
+      p.setCustomParameters({ prompt: 'select_account' });
+      try {
+        return await auth.signInWithPopup(p);
+      } catch (e) {
+        if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(e.code)) {
+          try { sessionStorage.setItem('bis-redirect', '1'); } catch { /* ללא אחסון */ }
+          return auth.signInWithRedirect(p);
+        }
+        throw e;
+      }
     }),
     logout: () => auth.signOut(),
     uid: () => user?.uid,

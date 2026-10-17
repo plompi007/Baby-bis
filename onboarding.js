@@ -52,6 +52,7 @@ function authHTML() {
 function bindAuth() {
   $$('[data-mode]').forEach((b) => b.onclick = () => { authMode = b.dataset.mode; render(); });
   $('#auLang').onclick = () => setLang(IS_EN ? 'he' : 'en');
+  if (Cloud.authError) { $('#auErr').textContent = Cloud.authError; Cloud.authError = ''; }
   $('#auEye').onclick = () => { const p = $('#auPass'); p.type = p.type === 'password' ? 'text' : 'password'; };
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
